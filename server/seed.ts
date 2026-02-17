@@ -30,22 +30,9 @@ export async function seedDatabase() {
   ]);
 
   await db.insert(servers).values([
-    { name: "Antica" },
-    { name: "Belobra" },
-    { name: "Calmera" },
-    { name: "Descubra" },
-    { name: "Elysian" },
-    { name: "Firmera" },
-    { name: "Gentebra" },
-    { name: "Honbra" },
-    { name: "Inabra" },
-    { name: "Javibra" },
-    { name: "Kalibra" },
-    { name: "Lobera" },
-    { name: "Monza" },
-    { name: "Nefera" },
-    { name: "Olima" },
-    { name: "Pacera" },
+    { name: "Deletera" },
+    { name: "Lordebra" },
+    { name: "Dominium" },
   ]);
 
   console.log("Database seeded successfully!");

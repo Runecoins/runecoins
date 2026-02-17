@@ -45,8 +45,7 @@ export function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.2 }}
         >
-          O maior marketplace de Tibia Coins do Brasil. Transacoes rapidas,
-          seguras e com os melhores precos do mercado.
+          Seu parceiro confiável para compra e venda de Paulistinha Coins. Transações rápidas, seguras e com os melhores preços do mercado.
         </motion.p>
 
         <motion.div
@@ -75,11 +74,6 @@ export function HeroSection() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.7, delay: 0.5 }}
         >
-          <div className="text-center">
-            <p className="text-2xl font-bold text-primary sm:text-3xl">50K+</p>
-            <p className="text-xs text-muted-foreground sm:text-sm">Pedidos Concluidos</p>
-          </div>
-          <div className="h-8 w-px bg-border" />
           <div className="text-center">
             <p className="text-2xl font-bold text-accent sm:text-3xl">4.9</p>
             <p className="text-xs text-muted-foreground sm:text-sm">Avaliacao Media</p>

@@ -24,7 +24,7 @@ export function Navbar() {
             data-testid="img-logo"
           />
           <span className="text-xl font-bold tracking-tight">
-            <span className="text-primary">Dra</span>
+            <span className="text-primary">Rune</span>
             <span className="text-accent">Coins</span>
           </span>
         </a>

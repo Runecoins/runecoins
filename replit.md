@@ -1,4 +1,4 @@
-# DraCoins - Tibia Coins Marketplace
+# RuneCoins - Paulistinha Coins Marketplace
 
 ## Overview
 A full-stack Tibia Coins buy/sell marketplace inspired by dracoins.com.br. Features a dark gaming theme with purple and green neon accents. Built with React, Express, and PostgreSQL.

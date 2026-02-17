@@ -42,17 +42,16 @@ export function Footer() {
             <a href="/" className="mb-4 flex items-center gap-2" data-testid="link-footer-home">
               <img
                 src="/images/logo-dragon.png"
-                alt="DraCoins"
+                alt="RuneCoins"
                 className="h-10 w-10 object-contain"
               />
               <span className="text-lg font-bold">
-                <span className="text-primary">Dra</span>
+                <span className="text-primary">Rune</span>
                 <span className="text-accent">Coins</span>
               </span>
             </a>
             <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-              O maior marketplace de Tibia Coins do Brasil. Compre e venda com
-              seguranca e os melhores precos.
+              Seu parceiro confiável para compra e venda de Paulistinha Coins. Transações rápidas, seguras e com os melhores preços do mercado.
             </p>
             <div className="flex gap-2">
               {socialLinks.map((social) => (
@@ -89,7 +88,7 @@ export function Footer() {
 
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-border/50 pt-6 sm:flex-row">
           <p className="text-xs text-muted-foreground">
-            DraCoins &copy; {new Date().getFullYear()} - Todos os direitos reservados.
+            RuneCoins &copy; {new Date().getFullYear()} - Todos os direitos reservados.
           </p>
           <div className="flex items-center gap-2">
             <img

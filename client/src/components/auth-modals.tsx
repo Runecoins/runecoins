@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import logoPath from "@assets/image_1771376960094.png";
+import { useAuth } from "@/lib/auth";
+import logoPath from "@assets/920361e1-d9d6-42a7-b8f4-a1c173bc7ed1-removebg-preview_1771388848903.png";
 
 interface AuthModalsProps {
   showLogin: boolean;
@@ -49,16 +50,27 @@ function LoginModal({
   onSwitchToRegister: () => void;
 }) {
   const { toast } = useToast();
+  const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!username.trim() || !password.trim()) {
       toast({ title: "Erro", description: "Preencha todos os campos.", variant: "destructive" });
       return;
     }
-    toast({ title: "Sucesso", description: "Login realizado com sucesso!" });
-    onClose();
+    setLoading(true);
+    try {
+      await login(username, password);
+      toast({ title: "Sucesso", description: "Login realizado com sucesso!" });
+      onClose();
+    } catch (error: any) {
+      const msg = error?.message?.includes("401") ? "Usuario ou senha incorretos" : "Erro ao fazer login";
+      toast({ title: "Erro", description: msg, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -101,6 +113,7 @@ function LoginModal({
                 placeholder="Senha"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                 data-testid="input-login-password"
               />
             </div>
@@ -123,8 +136,8 @@ function LoginModal({
         </div>
 
         <div className="flex gap-3 border-t border-border px-6 py-4">
-          <Button className="flex-1 bg-green-600 text-white" onClick={handleSubmit} data-testid="button-login-submit">
-            ENTRAR
+          <Button className="flex-1 bg-green-600 text-white" onClick={handleSubmit} disabled={loading} data-testid="button-login-submit">
+            {loading ? "ENTRANDO..." : "ENTRAR"}
           </Button>
           <Button className="flex-1 bg-primary text-white" onClick={onClose} data-testid="button-login-cancel">
             CANCELAR
@@ -143,19 +156,34 @@ function RegisterModal({
   onSwitchToLogin: () => void;
 }) {
   const { toast } = useToast();
+  const { register } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!username.trim() || !password.trim() || !fullName.trim() || !phone.trim() || !email.trim()) {
       toast({ title: "Erro", description: "Preencha todos os campos.", variant: "destructive" });
       return;
     }
-    toast({ title: "Sucesso", description: "Registro realizado com sucesso!" });
-    onClose();
+    if (password.length < 6) {
+      toast({ title: "Erro", description: "A senha deve ter no minimo 6 caracteres.", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      await register({ username, password, email, fullName, phone });
+      toast({ title: "Sucesso", description: "Registro realizado com sucesso!" });
+      onClose();
+    } catch (error: any) {
+      const msg = error?.message?.includes("400") ? "Nome de usuario ja existe" : "Erro ao registrar";
+      toast({ title: "Erro", description: msg, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -196,7 +224,7 @@ function RegisterModal({
                 </Label>
                 <Input
                   type="password"
-                  placeholder="Senha"
+                  placeholder="Senha (min 6 caracteres)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   data-testid="input-register-password"
@@ -255,8 +283,8 @@ function RegisterModal({
         </div>
 
         <div className="flex gap-3 border-t border-border px-6 py-4">
-          <Button className="flex-1 bg-green-600 text-white" onClick={handleSubmit} data-testid="button-register-submit">
-            REGISTRAR
+          <Button className="flex-1 bg-green-600 text-white" onClick={handleSubmit} disabled={loading} data-testid="button-register-submit">
+            {loading ? "REGISTRANDO..." : "REGISTRAR"}
           </Button>
           <Button className="flex-1 bg-primary text-white" onClick={onClose} data-testid="button-register-cancel">
             CANCELAR

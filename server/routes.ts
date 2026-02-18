@@ -1,13 +1,16 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertOrderSchema } from "@shared/schema";
+import { insertOrderSchema, loginSchema, registerSchema } from "@shared/schema";
 import { z } from "zod";
 import { createPixPayment, createCreditCardPayment, getOrderStatus } from "./pagarme";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import express from "express";
+import bcrypt from "bcryptjs";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -55,14 +58,178 @@ const paymentSchema = z.object({
   installments: z.number().optional(),
 });
 
+declare module "express-session" {
+  interface SessionData {
+    userId?: string;
+  }
+}
+
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Nao autenticado" });
+  }
+  next();
+}
+
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Nao autenticado" });
+  }
+  const user = await storage.getUser(req.session.userId);
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({ error: "Acesso negado" });
+  }
+  next();
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  const PgStore = connectPgSimple(session);
+  app.use(
+    session({
+      store: new PgStore({
+        conString: process.env.DATABASE_URL,
+        createTableIfMissing: true,
+      }),
+      secret: process.env.SESSION_SECRET || "runecoins-secret-key-change-me",
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      },
+    })
+  );
+
   app.use("/uploads", (req, res, next) => {
     res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
     next();
   }, express.static(uploadsDir));
+
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const data = registerSchema.parse(req.body);
+      const existing = await storage.getUserByUsername(data.username);
+      if (existing) {
+        return res.status(400).json({ error: "Nome de usuario ja existe" });
+      }
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+      const user = await storage.createUser({
+        username: data.username,
+        password: hashedPassword,
+        email: data.email,
+        fullName: data.fullName,
+        phone: data.phone,
+        role: "user",
+      });
+      req.session.userId = user.id;
+      res.status(201).json({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Dados invalidos", details: error.errors });
+      } else {
+        console.error("Register error:", error);
+        res.status(500).json({ error: "Erro ao registrar" });
+      }
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const data = loginSchema.parse(req.body);
+      const user = await storage.getUserByUsername(data.username);
+      if (!user) {
+        return res.status(401).json({ error: "Usuario ou senha incorretos" });
+      }
+      const valid = await bcrypt.compare(data.password, user.password);
+      if (!valid) {
+        return res.status(401).json({ error: "Usuario ou senha incorretos" });
+      }
+      req.session.userId = user.id;
+      res.json({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Dados invalidos" });
+      } else {
+        console.error("Login error:", error);
+        res.status(500).json({ error: "Erro ao fazer login" });
+      }
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.json({ ok: true });
+    });
+  });
+
+  app.get("/api/user", async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Nao autenticado" });
+    }
+    const user = await storage.getUser(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: "Usuario nao encontrado" });
+    }
+    res.json({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+    });
+  });
+
+  app.get("/api/admin/orders", requireAdmin, async (_req, res) => {
+    try {
+      const allOrders = await storage.getOrders();
+      res.json(allOrders);
+    } catch (error) {
+      res.status(500).json({ error: "Erro ao listar pedidos" });
+    }
+  });
+
+  app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
+    try {
+      const stats = await storage.getOrderStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Erro ao buscar estatisticas" });
+    }
+  });
+
+  const statusUpdateSchema = z.object({
+    status: z.enum(["pending", "awaiting_payment", "paid", "processing", "completed", "cancelled"]),
+  });
+
+  app.patch("/api/admin/orders/:id/status", requireAdmin, async (req, res) => {
+    try {
+      const { status } = statusUpdateSchema.parse(req.body);
+      const order = await storage.updateOrderStatus(req.params.id, status);
+      if (!order) {
+        return res.status(404).json({ error: "Pedido nao encontrado" });
+      }
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ error: "Erro ao atualizar status" });
+    }
+  });
 
   app.get("/api/packages", async (_req, res) => {
     try {

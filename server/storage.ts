@@ -6,12 +6,12 @@ import {
   users, coinPackages, servers, orders,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(user: InsertUser & { email?: string; fullName?: string; phone?: string; role?: string }): Promise<User>;
 
   getPackages(): Promise<CoinPackage[]>;
   getPackage(id: string): Promise<CoinPackage | undefined>;
@@ -32,6 +32,8 @@ export interface IStorage {
     pixQrCodeUrl?: string;
     status?: string;
   }): Promise<Order | undefined>;
+
+  getOrderStats(): Promise<{ total: number; pending: number; paid: number; sell: number; buy: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -45,7 +47,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createUser(insertUser: InsertUser & { email?: string; fullName?: string; phone?: string; role?: string }): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
@@ -79,7 +81,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOrders(): Promise<Order[]> {
-    return db.select().from(orders);
+    return db.select().from(orders).orderBy(desc(orders.createdAt));
   }
 
   async getOrder(id: string): Promise<Order | undefined> {
@@ -121,6 +123,17 @@ export class DatabaseStorage implements IStorage {
       .where(eq(orders.id, id))
       .returning();
     return updated;
+  }
+
+  async getOrderStats(): Promise<{ total: number; pending: number; paid: number; sell: number; buy: number }> {
+    const allOrders = await db.select().from(orders);
+    return {
+      total: allOrders.length,
+      pending: allOrders.filter(o => o.status === "pending" || o.status === "awaiting_payment").length,
+      paid: allOrders.filter(o => o.status === "paid").length,
+      sell: allOrders.filter(o => o.type === "sell").length,
+      buy: allOrders.filter(o => o.type === "buy").length,
+    };
   }
 }
 

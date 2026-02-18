@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Coins, LogIn, UserPlus } from "lucide-react";
+import { Menu, X, LogIn, UserPlus, Shield, LogOut, User } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthModals } from "@/components/auth-modals";
+import { useAuth } from "@/lib/auth";
+import { useLocation } from "wouter";
 import logoPath from "@assets/920361e1-d9d6-42a7-b8f4-a1c173bc7ed1-removebg-preview_1771388848903.png";
 
 const navLinks = [
@@ -16,9 +18,16 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const { user, logout } = useAuth();
+  const [, setLocation] = useLocation();
 
   const openLogin = () => { setShowRegister(false); setShowLogin(true); };
   const openRegister = () => { setShowLogin(false); setShowRegister(true); };
+
+  const handleLogout = async () => {
+    await logout();
+    setLocation("/");
+  };
 
   return (
     <>
@@ -49,14 +58,35 @@ export function Navbar() {
 
           <div className="hidden items-center gap-2 md:flex">
             <ThemeToggle />
-            <Button variant="outline" size="sm" onClick={openLogin} data-testid="button-login">
-              <LogIn className="mr-1.5 h-4 w-4" />
-              Entrar
-            </Button>
-            <Button size="sm" onClick={openRegister} data-testid="button-register">
-              <UserPlus className="mr-1.5 h-4 w-4" />
-              Cadastrar
-            </Button>
+            {user ? (
+              <>
+                <span className="text-sm text-muted-foreground" data-testid="text-username">
+                  <User className="mr-1 inline h-4 w-4" />
+                  {user.username}
+                </span>
+                {user.role === "admin" && (
+                  <Button variant="outline" size="sm" onClick={() => setLocation("/admin")} data-testid="button-admin-panel">
+                    <Shield className="mr-1.5 h-4 w-4" />
+                    Painel Admin
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={handleLogout} data-testid="button-logout">
+                  <LogOut className="mr-1.5 h-4 w-4" />
+                  Sair
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" size="sm" onClick={openLogin} data-testid="button-login">
+                  <LogIn className="mr-1.5 h-4 w-4" />
+                  Entrar
+                </Button>
+                <Button size="sm" onClick={openRegister} data-testid="button-register">
+                  <UserPlus className="mr-1.5 h-4 w-4" />
+                  Cadastrar
+                </Button>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-1 md:hidden">
@@ -90,14 +120,35 @@ export function Navbar() {
                 </Button>
               ))}
               <div className="mt-2 flex flex-col gap-2">
-                <Button variant="outline" size="sm" onClick={() => { setMobileOpen(false); openLogin(); }} data-testid="button-login-mobile">
-                  <LogIn className="mr-1.5 h-4 w-4" />
-                  Entrar
-                </Button>
-                <Button size="sm" onClick={() => { setMobileOpen(false); openRegister(); }} data-testid="button-register-mobile">
-                  <UserPlus className="mr-1.5 h-4 w-4" />
-                  Cadastrar
-                </Button>
+                {user ? (
+                  <>
+                    <span className="px-3 py-1 text-sm text-muted-foreground" data-testid="text-username-mobile">
+                      <User className="mr-1 inline h-4 w-4" />
+                      {user.username}
+                    </span>
+                    {user.role === "admin" && (
+                      <Button variant="outline" size="sm" onClick={() => { setMobileOpen(false); setLocation("/admin"); }} data-testid="button-admin-panel-mobile">
+                        <Shield className="mr-1.5 h-4 w-4" />
+                        Painel Admin
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={() => { setMobileOpen(false); handleLogout(); }} data-testid="button-logout-mobile">
+                      <LogOut className="mr-1.5 h-4 w-4" />
+                      Sair
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => { setMobileOpen(false); openLogin(); }} data-testid="button-login-mobile">
+                      <LogIn className="mr-1.5 h-4 w-4" />
+                      Entrar
+                    </Button>
+                    <Button size="sm" onClick={() => { setMobileOpen(false); openRegister(); }} data-testid="button-register-mobile">
+                      <UserPlus className="mr-1.5 h-4 w-4" />
+                      Cadastrar
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>

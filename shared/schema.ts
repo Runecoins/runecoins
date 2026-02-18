@@ -7,6 +7,11 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  email: text("email"),
+  fullName: text("full_name"),
+  phone: text("phone"),
+  role: text("role").notNull().default("user"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const coinPackages = pgTable("coin_packages", {
@@ -55,6 +60,23 @@ export const orders = pgTable("orders", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+}).extend({
+  email: z.string().email().optional(),
+  fullName: z.string().optional(),
+  phone: z.string().optional(),
+});
+
+export const loginSchema = z.object({
+  username: z.string().min(1),
+  password: z.string().min(1),
+});
+
+export const registerSchema = z.object({
+  username: z.string().min(3),
+  password: z.string().min(6),
+  email: z.string().email(),
+  fullName: z.string().min(1),
+  phone: z.string().min(10),
 });
 
 export const insertCoinPackageSchema = createInsertSchema(coinPackages).omit({

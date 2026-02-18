@@ -9,23 +9,35 @@ A full-stack Tibia Coins buy/sell marketplace with a dark gaming theme featuring
 - Database: PostgreSQL (Neon-backed)
 - State: TanStack React Query
 - Payment: Pagar.me API v5 (via axios)
+- Auth: bcryptjs + express-session + connect-pg-simple
 
 ## Project Structure
 - `client/src/pages/home.tsx` - Main landing page
+- `client/src/pages/admin.tsx` - Admin dashboard (protected)
+- `client/src/lib/auth.tsx` - Auth context provider
 - `client/src/components/` - All UI components (navbar, hero-section, coin-calculator, features, servers, faq, footer, auth-modals)
-- `server/routes.ts` - API endpoints (buy payments, sell orders, webhooks)
+- `server/routes.ts` - API endpoints (auth, admin, buy payments, sell orders, webhooks)
 - `server/pagarme.ts` - Pagar.me payment gateway integration
 - `server/storage.ts` - Database storage layer
-- `server/seed.ts` - Database seeding
+- `server/seed.ts` - Database seeding (includes default admin user)
 - `shared/schema.ts` - Drizzle schemas and types
+
+## Authentication & Permissions
+- Two user roles: "user" (regular) and "admin"
+- Session-based auth stored in PostgreSQL
+- Regular users: can browse, buy, sell coins
+- Admin users: full access to admin panel at /admin
+- Default admin account: username="admin", password="admin123"
+- Admin panel features: view all orders, filter/search, update order status, view screenshots, stats dashboard
 
 ## Key Features
 - Hero section with RuneCoins logo, animated stats
 - Coin buy calculator with PIX and credit card payment (5% surcharge on credit card)
-- Coin sell wizard (6-step flow): quantity → character/server → screenshots → personal info → PIX key → order summary
+- Coin sell wizard (6-step flow): quantity -> character/server -> screenshots -> personal info -> PIX key -> order summary
 - Server listing (3 servers: Deletera, Lordebra, Dominium)
 - FAQ accordion section
-- Authentication modals (Login/Register)
+- Authentication modals (Login/Register) with real backend
+- Admin dashboard with order management, filters, stats
 - Dark/light theme toggle
 - Responsive design
 
@@ -35,6 +47,18 @@ A full-stack Tibia Coins buy/sell marketplace with a dark gaming theme featuring
 - Credit card surcharge: +5% on buy orders
 
 ## API Endpoints
+### Auth
+- POST /api/auth/register - Register new user
+- POST /api/auth/login - Login
+- POST /api/auth/logout - Logout
+- GET /api/user - Get current user info
+
+### Admin (require admin role)
+- GET /api/admin/orders - List all orders
+- GET /api/admin/stats - Get order statistics
+- PATCH /api/admin/orders/:id/status - Update order status
+
+### Public
 - GET /api/packages - List coin packages
 - GET /api/servers - List game servers
 - POST /api/orders - Create a new order
@@ -45,12 +69,14 @@ A full-stack Tibia Coins buy/sell marketplace with a dark gaming theme featuring
 - POST /api/webhooks/pagarme - Pagar.me webhook handler
 
 ## Database Tables
-- users, coin_packages, servers, orders (with pix_key, pix_account_holder, store_screenshot, market_screenshot fields)
+- users (id, username, password, email, full_name, phone, role, created_at)
+- coin_packages, servers, orders (with pix_key, pix_account_holder, store_screenshot, market_screenshot fields)
+- session (auto-created by connect-pg-simple)
 
 ## Theme
-- Dark-first theme with red primary (0° hue) and black accents
+- Dark-first theme with red primary (0 hue) and black accents
 - Uses ThemeProvider with localStorage sync
 
 ## Logo
-- Main logo: attached_assets/image_1771387321993.png (RuneCoins golden emblem)
+- Main logo: attached_assets/920361e1-d9d6-42a7-b8f4-a1c173bc7ed1-removebg-preview_1771388848903.png
 - Displayed in navbar and hero section

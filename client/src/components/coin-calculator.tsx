@@ -27,6 +27,11 @@ interface PixResult {
 export function CoinCalculator() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("comprar");
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setPaymentMethod("");
+    setShowCheckout(false);
+  };
   const [quantity, setQuantity] = useState(250);
   const [characterName, setCharacterName] = useState("");
   const [selectedServer, setSelectedServer] = useState("");
@@ -56,7 +61,9 @@ export function CoinCalculator() {
   const activePackages = packages.filter((p) => p.active);
   const currentPkg = activePackages.length > 0 ? activePackages[0] : null;
 
-  const buyPrice = BUY_PRICE_PER_UNIT * quantity;
+  const baseBuyPrice = BUY_PRICE_PER_UNIT * quantity;
+  const creditCardSurcharge = paymentMethod === "credit_card" ? 0.05 : 0;
+  const buyPrice = baseBuyPrice * (1 + creditCardSurcharge);
   const sellPrice = SELL_PRICE_PER_UNIT * quantity;
 
   const paymentMutation = useMutation({
@@ -225,7 +232,7 @@ export function CoinCalculator() {
           transition={{ duration: 0.5, delay: 0.1 }}
         >
           <Card className="overflow-visible border-primary/20">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
               <div className="border-b border-border/50 px-4 pt-4 sm:px-6 sm:pt-6">
                 <TabsList className="w-full">
                   <TabsTrigger value="comprar" className="flex-1" data-testid="tab-buy">
@@ -460,7 +467,9 @@ function CoinForm({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="pix">PIX</SelectItem>
-              <SelectItem value="credit_card">Cartao de Credito</SelectItem>
+              {type === "buy" && (
+                <SelectItem value="credit_card">Cartao de Credito (+5%)</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -482,6 +491,7 @@ function CoinForm({
             <div>
               <p className="text-sm text-muted-foreground" data-testid="text-price-breakdown">
                 {quantity.toLocaleString("pt-BR")} coins x R$ {pricePerUnit.toFixed(4)}
+                {paymentMethod === "credit_card" && type === "buy" && " (+5% cartao)"}
               </p>
               <p className="text-2xl font-bold">
                 R$ <span className="text-primary" data-testid="text-total-price">{totalPrice.toFixed(2)}</span>

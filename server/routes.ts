@@ -84,7 +84,9 @@ export async function registerRoutes(
       }
 
       const pricePerUnit = data.type === "buy" ? BUY_PRICE_PER_UNIT : SELL_PRICE_PER_UNIT;
-      const serverTotal = parseFloat((pricePerUnit * data.quantity).toFixed(2));
+      const baseTotal = pricePerUnit * data.quantity;
+      const creditCardSurcharge = data.paymentMethod === "credit_card" ? 0.05 : 0;
+      const serverTotal = parseFloat((baseTotal * (1 + creditCardSurcharge)).toFixed(2));
       const amountInCents = Math.round(serverTotal * 100);
 
       if (amountInCents < 100) {

@@ -38,6 +38,10 @@ export const orders = pgTable("orders", {
   status: text("status").notNull().default("pending"),
   paymentMethod: text("payment_method"),
   contactInfo: text("contact_info"),
+  pagarmeOrderId: text("pagarme_order_id"),
+  pagarmeChargeId: text("pagarme_charge_id"),
+  pixQrCode: text("pix_qr_code"),
+  pixQrCodeUrl: text("pix_qr_code_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -25,6 +25,13 @@ export interface IStorage {
   getOrder(id: string): Promise<Order | undefined>;
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrderStatus(id: string, status: string): Promise<Order | undefined>;
+  updateOrderPayment(id: string, data: {
+    pagarmeOrderId?: string;
+    pagarmeChargeId?: string;
+    pixQrCode?: string;
+    pixQrCodeUrl?: string;
+    status?: string;
+  }): Promise<Order | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -89,6 +96,28 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(orders)
       .set({ status })
+      .where(eq(orders.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateOrderPayment(id: string, data: {
+    pagarmeOrderId?: string;
+    pagarmeChargeId?: string;
+    pixQrCode?: string;
+    pixQrCodeUrl?: string;
+    status?: string;
+  }): Promise<Order | undefined> {
+    const updateData: Record<string, string> = {};
+    if (data.pagarmeOrderId) updateData.pagarmeOrderId = data.pagarmeOrderId;
+    if (data.pagarmeChargeId) updateData.pagarmeChargeId = data.pagarmeChargeId;
+    if (data.pixQrCode) updateData.pixQrCode = data.pixQrCode;
+    if (data.pixQrCodeUrl) updateData.pixQrCodeUrl = data.pixQrCodeUrl;
+    if (data.status) updateData.status = data.status;
+
+    const [updated] = await db
+      .update(orders)
+      .set(updateData)
       .where(eq(orders.id, id))
       .returning();
     return updated;

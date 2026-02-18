@@ -10,13 +10,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ShoppingCart, Wallet, Calculator, Loader2, CheckCircle } from "lucide-react";
+import { ShoppingCart, Wallet, Calculator, Loader2, CheckCircle, X, Copy, Check } from "lucide-react";
 import type { CoinPackage, Server } from "@shared/schema";
 import { motion } from "framer-motion";
 
 const quantityPresets = [25, 50, 100, 250, 500, 1000, 5000, 10000];
 const BUY_PRICE_PER_UNIT = 0.0799;
 const SELL_PRICE_PER_UNIT = 0.06;
+
+interface PixResult {
+  orderId: string;
+  pixQrCode: string;
+  pixQrCodeUrl: string;
+}
 
 export function CoinCalculator() {
   const { toast } = useToast();
@@ -26,6 +32,18 @@ export function CoinCalculator() {
   const [selectedServer, setSelectedServer] = useState("");
   const [contactInfo, setContactInfo] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [pixResult, setPixResult] = useState<PixResult | null>(null);
+
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerDocument, setCustomerDocument] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardHolderName, setCardHolderName] = useState("");
+  const [cardExpMonth, setCardExpMonth] = useState("");
+  const [cardExpYear, setCardExpYear] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
 
   const { data: packages = [], isLoading: packagesLoading } = useQuery<CoinPackage[]>({
     queryKey: ["/api/packages"],
@@ -41,31 +59,56 @@ export function CoinCalculator() {
   const buyPrice = BUY_PRICE_PER_UNIT * quantity;
   const sellPrice = SELL_PRICE_PER_UNIT * quantity;
 
-  const orderMutation = useMutation({
+  const paymentMutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
-      const res = await apiRequest("POST", "/api/orders", data);
+      const res = await apiRequest("POST", "/api/payments", data);
       return res.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "Pedido Criado!",
-        description: "Seu pedido foi registrado com sucesso. Entraremos em contato em breve.",
-      });
-      setCharacterName("");
-      setContactInfo("");
-      setQuantity(250);
+    onSuccess: (result) => {
+      if (result.paymentMethod === "pix") {
+        setPixResult({
+          orderId: result.orderId,
+          pixQrCode: result.pixQrCode,
+          pixQrCodeUrl: result.pixQrCodeUrl,
+        });
+      } else {
+        toast({
+          title: "Pagamento Processado!",
+          description: result.status === "paid"
+            ? "Pagamento aprovado com sucesso!"
+            : "Pagamento em processamento. Voce sera notificado.",
+        });
+        resetForm();
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
-        title: "Erro",
-        description: "Nao foi possivel criar o pedido. Tente novamente.",
+        title: "Erro no Pagamento",
+        description: error?.message || "Nao foi possivel processar o pagamento. Tente novamente.",
         variant: "destructive",
       });
     },
   });
 
-  const handleSubmit = (type: "buy" | "sell") => {
+  const resetForm = () => {
+    setCharacterName("");
+    setContactInfo("");
+    setQuantity(250);
+    setShowCheckout(false);
+    setPixResult(null);
+    setCustomerName("");
+    setCustomerEmail("");
+    setCustomerDocument("");
+    setCustomerPhone("");
+    setCardNumber("");
+    setCardHolderName("");
+    setCardExpMonth("");
+    setCardExpYear("");
+    setCardCvv("");
+  };
+
+  const handleProceedToCheckout = (type: "buy" | "sell") => {
     if (!characterName.trim()) {
       toast({ title: "Erro", description: "Informe o nome do personagem.", variant: "destructive" });
       return;
@@ -74,23 +117,50 @@ export function CoinCalculator() {
       toast({ title: "Erro", description: "Selecione um servidor.", variant: "destructive" });
       return;
     }
+    if (!paymentMethod) {
+      toast({ title: "Erro", description: "Selecione a forma de pagamento.", variant: "destructive" });
+      return;
+    }
     if (quantity < 25) {
       toast({ title: "Erro", description: "Quantidade minima: 25 coins.", variant: "destructive" });
       return;
     }
+    setShowCheckout(true);
+  };
 
-    const finalPrice = type === "buy" ? buyPrice : sellPrice;
+  const handlePayment = (type: "buy" | "sell") => {
+    if (!customerName.trim() || !customerEmail.trim() || !customerDocument.trim() || !customerPhone.trim()) {
+      toast({ title: "Erro", description: "Preencha todos os dados pessoais.", variant: "destructive" });
+      return;
+    }
 
-    orderMutation.mutate({
+    const payload: Record<string, unknown> = {
       type,
       characterName: characterName.trim(),
       serverId: selectedServer,
-      packageId: currentPkg?.id || "",
       quantity,
-      totalPrice: finalPrice.toFixed(2),
-      paymentMethod: paymentMethod || "pix",
+      paymentMethod,
       contactInfo: contactInfo.trim(),
-    });
+      customerName: customerName.trim(),
+      customerEmail: customerEmail.trim(),
+      customerDocument: customerDocument.replace(/\D/g, ""),
+      customerPhone: customerPhone.replace(/\D/g, ""),
+    };
+
+    if (paymentMethod === "credit_card") {
+      if (!cardNumber || !cardHolderName || !cardExpMonth || !cardExpYear || !cardCvv) {
+        toast({ title: "Erro", description: "Preencha todos os dados do cartao.", variant: "destructive" });
+        return;
+      }
+      payload.cardNumber = cardNumber.replace(/\s/g, "");
+      payload.cardHolderName = cardHolderName.trim();
+      payload.cardExpMonth = parseInt(cardExpMonth);
+      payload.cardExpYear = parseInt(cardExpYear);
+      payload.cardCvv = cardCvv;
+      payload.installments = 1;
+    }
+
+    paymentMutation.mutate(payload);
   };
 
   if (packagesLoading) {
@@ -103,6 +173,20 @@ export function CoinCalculator() {
             <Skeleton className="mx-auto h-5 w-64" />
           </div>
           <Skeleton className="h-96 rounded-md" />
+        </div>
+      </section>
+    );
+  }
+
+  if (pixResult) {
+    return (
+      <section id="comprar" className="relative py-20">
+        <div className="relative mx-auto max-w-lg px-4 sm:px-6">
+          <PixQrCodeDisplay
+            pixResult={pixResult}
+            totalPrice={activeTab === "comprar" ? buyPrice : sellPrice}
+            onClose={resetForm}
+          />
         </div>
       </section>
     );
@@ -157,47 +241,107 @@ export function CoinCalculator() {
 
               <CardContent className="p-4 sm:p-6">
                 <TabsContent value="comprar" className="mt-0 space-y-6">
-                  <CoinForm
-                    type="buy"
-                    quantity={quantity}
-                    setQuantity={setQuantity}
-                    characterName={characterName}
-                    setCharacterName={setCharacterName}
-                    selectedServer={selectedServer}
-                    setSelectedServer={setSelectedServer}
-                    contactInfo={contactInfo}
-                    setContactInfo={setContactInfo}
-                    paymentMethod={paymentMethod}
-                    setPaymentMethod={setPaymentMethod}
-                    servers={servers}
-                    serversLoading={serversLoading}
-                    pricePerUnit={BUY_PRICE_PER_UNIT}
-                    totalPrice={buyPrice}
-                    onSubmit={() => handleSubmit("buy")}
-                    isPending={orderMutation.isPending}
-                  />
+                  {showCheckout ? (
+                    <CheckoutForm
+                      type="buy"
+                      paymentMethod={paymentMethod}
+                      quantity={quantity}
+                      totalPrice={buyPrice}
+                      customerName={customerName}
+                      setCustomerName={setCustomerName}
+                      customerEmail={customerEmail}
+                      setCustomerEmail={setCustomerEmail}
+                      customerDocument={customerDocument}
+                      setCustomerDocument={setCustomerDocument}
+                      customerPhone={customerPhone}
+                      setCustomerPhone={setCustomerPhone}
+                      cardNumber={cardNumber}
+                      setCardNumber={setCardNumber}
+                      cardHolderName={cardHolderName}
+                      setCardHolderName={setCardHolderName}
+                      cardExpMonth={cardExpMonth}
+                      setCardExpMonth={setCardExpMonth}
+                      cardExpYear={cardExpYear}
+                      setCardExpYear={setCardExpYear}
+                      cardCvv={cardCvv}
+                      setCardCvv={setCardCvv}
+                      onSubmit={() => handlePayment("buy")}
+                      onBack={() => setShowCheckout(false)}
+                      isPending={paymentMutation.isPending}
+                    />
+                  ) : (
+                    <CoinForm
+                      type="buy"
+                      quantity={quantity}
+                      setQuantity={setQuantity}
+                      characterName={characterName}
+                      setCharacterName={setCharacterName}
+                      selectedServer={selectedServer}
+                      setSelectedServer={setSelectedServer}
+                      contactInfo={contactInfo}
+                      setContactInfo={setContactInfo}
+                      paymentMethod={paymentMethod}
+                      setPaymentMethod={setPaymentMethod}
+                      servers={servers}
+                      serversLoading={serversLoading}
+                      pricePerUnit={BUY_PRICE_PER_UNIT}
+                      totalPrice={buyPrice}
+                      onSubmit={() => handleProceedToCheckout("buy")}
+                      isPending={false}
+                    />
+                  )}
                 </TabsContent>
 
                 <TabsContent value="vender" className="mt-0 space-y-6">
-                  <CoinForm
-                    type="sell"
-                    quantity={quantity}
-                    setQuantity={setQuantity}
-                    characterName={characterName}
-                    setCharacterName={setCharacterName}
-                    selectedServer={selectedServer}
-                    setSelectedServer={setSelectedServer}
-                    contactInfo={contactInfo}
-                    setContactInfo={setContactInfo}
-                    paymentMethod={paymentMethod}
-                    setPaymentMethod={setPaymentMethod}
-                    servers={servers}
-                    serversLoading={serversLoading}
-                    pricePerUnit={SELL_PRICE_PER_UNIT}
-                    totalPrice={sellPrice}
-                    onSubmit={() => handleSubmit("sell")}
-                    isPending={orderMutation.isPending}
-                  />
+                  {showCheckout ? (
+                    <CheckoutForm
+                      type="sell"
+                      paymentMethod={paymentMethod}
+                      quantity={quantity}
+                      totalPrice={sellPrice}
+                      customerName={customerName}
+                      setCustomerName={setCustomerName}
+                      customerEmail={customerEmail}
+                      setCustomerEmail={setCustomerEmail}
+                      customerDocument={customerDocument}
+                      setCustomerDocument={setCustomerDocument}
+                      customerPhone={customerPhone}
+                      setCustomerPhone={setCustomerPhone}
+                      cardNumber={cardNumber}
+                      setCardNumber={setCardNumber}
+                      cardHolderName={cardHolderName}
+                      setCardHolderName={setCardHolderName}
+                      cardExpMonth={cardExpMonth}
+                      setCardExpMonth={setCardExpMonth}
+                      cardExpYear={cardExpYear}
+                      setCardExpYear={setCardExpYear}
+                      cardCvv={cardCvv}
+                      setCardCvv={setCardCvv}
+                      onSubmit={() => handlePayment("sell")}
+                      onBack={() => setShowCheckout(false)}
+                      isPending={paymentMutation.isPending}
+                    />
+                  ) : (
+                    <CoinForm
+                      type="sell"
+                      quantity={quantity}
+                      setQuantity={setQuantity}
+                      characterName={characterName}
+                      setCharacterName={setCharacterName}
+                      selectedServer={selectedServer}
+                      setSelectedServer={setSelectedServer}
+                      contactInfo={contactInfo}
+                      setContactInfo={setContactInfo}
+                      paymentMethod={paymentMethod}
+                      setPaymentMethod={setPaymentMethod}
+                      servers={servers}
+                      serversLoading={serversLoading}
+                      pricePerUnit={SELL_PRICE_PER_UNIT}
+                      totalPrice={sellPrice}
+                      onSubmit={() => handleProceedToCheckout("sell")}
+                      isPending={false}
+                    />
+                  )}
                 </TabsContent>
               </CardContent>
             </Tabs>
@@ -356,10 +500,284 @@ function CoinForm({
             ) : (
               <CheckCircle className="mr-2 h-4 w-4" />
             )}
-            {type === "buy" ? "Comprar Agora" : "Vender Agora"}
+            {type === "buy" ? "Continuar para Pagamento" : "Continuar para Pagamento"}
           </Button>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+interface CheckoutFormProps {
+  type: "buy" | "sell";
+  paymentMethod: string;
+  quantity: number;
+  totalPrice: number;
+  customerName: string;
+  setCustomerName: (v: string) => void;
+  customerEmail: string;
+  setCustomerEmail: (v: string) => void;
+  customerDocument: string;
+  setCustomerDocument: (v: string) => void;
+  customerPhone: string;
+  setCustomerPhone: (v: string) => void;
+  cardNumber: string;
+  setCardNumber: (v: string) => void;
+  cardHolderName: string;
+  setCardHolderName: (v: string) => void;
+  cardExpMonth: string;
+  setCardExpMonth: (v: string) => void;
+  cardExpYear: string;
+  setCardExpYear: (v: string) => void;
+  cardCvv: string;
+  setCardCvv: (v: string) => void;
+  onSubmit: () => void;
+  onBack: () => void;
+  isPending: boolean;
+}
+
+function CheckoutForm({
+  type,
+  paymentMethod,
+  quantity,
+  totalPrice,
+  customerName,
+  setCustomerName,
+  customerEmail,
+  setCustomerEmail,
+  customerDocument,
+  setCustomerDocument,
+  customerPhone,
+  setCustomerPhone,
+  cardNumber,
+  setCardNumber,
+  cardHolderName,
+  setCardHolderName,
+  cardExpMonth,
+  setCardExpMonth,
+  cardExpYear,
+  setCardExpYear,
+  cardCvv,
+  setCardCvv,
+  onSubmit,
+  onBack,
+  isPending,
+}: CheckoutFormProps) {
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Dados para Pagamento</h3>
+        <Button variant="ghost" size="sm" onClick={onBack} data-testid="button-back-to-order">
+          Voltar
+        </Button>
+      </div>
+
+      <Card className="border-primary/10 bg-muted/30">
+        <CardContent className="p-3">
+          <p className="text-sm text-muted-foreground">
+            {quantity.toLocaleString("pt-BR")} coins - {paymentMethod === "pix" ? "PIX" : "Cartao de Credito"}
+          </p>
+          <p className="text-xl font-bold text-primary">R$ {totalPrice.toFixed(2)}</p>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label className="mb-1 block text-sm font-medium">
+            Nome Completo <span className="text-primary">*</span>
+          </Label>
+          <Input
+            placeholder="Seu nome completo"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            data-testid="input-customer-name"
+          />
+        </div>
+        <div>
+          <Label className="mb-1 block text-sm font-medium">
+            E-mail <span className="text-primary">*</span>
+          </Label>
+          <Input
+            type="email"
+            placeholder="seu@email.com"
+            value={customerEmail}
+            onChange={(e) => setCustomerEmail(e.target.value)}
+            data-testid="input-customer-email"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label className="mb-1 block text-sm font-medium">
+            CPF <span className="text-primary">*</span>
+          </Label>
+          <Input
+            placeholder="000.000.000-00"
+            value={customerDocument}
+            onChange={(e) => setCustomerDocument(e.target.value)}
+            data-testid="input-customer-document"
+          />
+        </div>
+        <div>
+          <Label className="mb-1 block text-sm font-medium">
+            Celular / WhatsApp <span className="text-primary">*</span>
+          </Label>
+          <Input
+            placeholder="(11) 99999-9999"
+            value={customerPhone}
+            onChange={(e) => setCustomerPhone(e.target.value)}
+            data-testid="input-customer-phone"
+          />
+        </div>
+      </div>
+
+      {paymentMethod === "credit_card" && (
+        <div className="space-y-4 rounded-md border border-border p-4">
+          <h4 className="text-sm font-semibold">Dados do Cartao</h4>
+          <div>
+            <Label className="mb-1 block text-sm font-medium">
+              Numero do Cartao <span className="text-primary">*</span>
+            </Label>
+            <Input
+              placeholder="0000 0000 0000 0000"
+              value={cardNumber}
+              onChange={(e) => setCardNumber(e.target.value)}
+              data-testid="input-card-number"
+            />
+          </div>
+          <div>
+            <Label className="mb-1 block text-sm font-medium">
+              Nome no Cartao <span className="text-primary">*</span>
+            </Label>
+            <Input
+              placeholder="NOME COMO NO CARTAO"
+              value={cardHolderName}
+              onChange={(e) => setCardHolderName(e.target.value)}
+              data-testid="input-card-holder"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <Label className="mb-1 block text-sm font-medium">Mes</Label>
+              <Input
+                placeholder="MM"
+                value={cardExpMonth}
+                onChange={(e) => setCardExpMonth(e.target.value)}
+                data-testid="input-card-exp-month"
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block text-sm font-medium">Ano</Label>
+              <Input
+                placeholder="AAAA"
+                value={cardExpYear}
+                onChange={(e) => setCardExpYear(e.target.value)}
+                data-testid="input-card-exp-year"
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block text-sm font-medium">CVV</Label>
+              <Input
+                placeholder="000"
+                value={cardCvv}
+                onChange={(e) => setCardCvv(e.target.value)}
+                data-testid="input-card-cvv"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Button
+        size="lg"
+        className="w-full"
+        onClick={onSubmit}
+        disabled={isPending}
+        data-testid={`button-pay-${type}`}
+      >
+        {isPending ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <CheckCircle className="mr-2 h-4 w-4" />
+        )}
+        {paymentMethod === "pix" ? "Gerar QR Code PIX" : "Pagar com Cartao"}
+      </Button>
+    </div>
+  );
+}
+
+function PixQrCodeDisplay({
+  pixResult,
+  totalPrice,
+  onClose,
+}: {
+  pixResult: PixResult;
+  totalPrice: number;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(pixResult.pixQrCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Card className="border-primary/20">
+      <CardContent className="p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-xl font-bold">Pagamento PIX</h3>
+          <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close-pix">
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <div className="mb-4 text-center">
+          <p className="text-sm text-muted-foreground">Valor a pagar:</p>
+          <p className="text-3xl font-bold text-primary">R$ {totalPrice.toFixed(2)}</p>
+        </div>
+
+        <div className="mb-4 flex justify-center">
+          {pixResult.pixQrCodeUrl ? (
+            <img
+              src={pixResult.pixQrCodeUrl}
+              alt="QR Code PIX"
+              className="h-56 w-56 rounded-md border border-border bg-white p-2"
+              data-testid="img-pix-qrcode"
+            />
+          ) : (
+            <div className="flex h-56 w-56 items-center justify-center rounded-md border border-border bg-muted">
+              <p className="text-sm text-muted-foreground">QR Code indisponivel</p>
+            </div>
+          )}
+        </div>
+
+        <div className="mb-4">
+          <Label className="mb-1 block text-sm font-medium">Codigo PIX (Copia e Cola)</Label>
+          <div className="flex gap-2">
+            <Input
+              readOnly
+              value={pixResult.pixQrCode}
+              className="text-xs"
+              data-testid="input-pix-code"
+            />
+            <Button variant="outline" size="sm" onClick={handleCopy} data-testid="button-copy-pix">
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
+
+        <div className="rounded-md bg-muted/50 p-3 text-center text-sm text-muted-foreground">
+          <p>Abra o app do seu banco, escolha pagar via PIX e escaneie o QR Code ou copie e cole o codigo acima.</p>
+          <p className="mt-1 font-medium text-primary">O QR Code expira em 1 hora.</p>
+        </div>
+
+        <Button variant="outline" className="mt-4 w-full" onClick={onClose} data-testid="button-new-order">
+          Fazer novo pedido
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

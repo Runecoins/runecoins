@@ -42,8 +42,8 @@ A full-stack Tibia Coins buy/sell marketplace with a dark gaming theme featuring
 - Responsive design
 
 ## Pricing
-- Buy price: R$ 0.0799 per coin (fixed)
-- Sell price: R$ 0.06 per coin (fixed)
+- Buy price: R$ 0.0849 per coin (fixed)
+- Sell price: R$ 0.0649 per coin (fixed)
 - Credit card surcharge: +5% on buy orders
 
 ## API Endpoints

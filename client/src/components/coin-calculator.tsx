@@ -15,7 +15,8 @@ import type { CoinPackage, Server } from "@shared/schema";
 import { motion } from "framer-motion";
 
 const quantityPresets = [25, 50, 100, 250, 500, 1000, 5000, 10000];
-const SELL_DISCOUNT = 0.85;
+const BUY_PRICE_PER_UNIT = 0.0799;
+const SELL_PRICE_PER_UNIT = 0.06;
 
 export function CoinCalculator() {
   const { toast } = useToast();
@@ -36,11 +37,9 @@ export function CoinCalculator() {
 
   const activePackages = packages.filter((p) => p.active);
   const currentPkg = activePackages.length > 0 ? activePackages[0] : null;
-  const basePricePerUnit = currentPkg ? Number(currentPkg.pricePerUnit) : 0;
 
-  const buyPrice = basePricePerUnit * quantity;
-  const sellPricePerUnit = basePricePerUnit * SELL_DISCOUNT;
-  const sellPrice = sellPricePerUnit * quantity;
+  const buyPrice = BUY_PRICE_PER_UNIT * quantity;
+  const sellPrice = SELL_PRICE_PER_UNIT * quantity;
 
   const orderMutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
@@ -172,7 +171,7 @@ export function CoinCalculator() {
                     setPaymentMethod={setPaymentMethod}
                     servers={servers}
                     serversLoading={serversLoading}
-                    pricePerUnit={basePricePerUnit}
+                    pricePerUnit={BUY_PRICE_PER_UNIT}
                     totalPrice={buyPrice}
                     onSubmit={() => handleSubmit("buy")}
                     isPending={orderMutation.isPending}
@@ -194,7 +193,7 @@ export function CoinCalculator() {
                     setPaymentMethod={setPaymentMethod}
                     servers={servers}
                     serversLoading={serversLoading}
-                    pricePerUnit={sellPricePerUnit}
+                    pricePerUnit={SELL_PRICE_PER_UNIT}
                     totalPrice={sellPrice}
                     onSubmit={() => handleSubmit("sell")}
                     isPending={orderMutation.isPending}

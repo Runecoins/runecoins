@@ -1,4 +1,5 @@
 import { SiDiscord, SiInstagram, SiWhatsapp } from "react-icons/si";
+import logoPath from "@assets/image_1771376960094.png";
 
 const socialLinks = [
   { icon: SiInstagram, label: "Instagram", href: "#" },
@@ -41,14 +42,10 @@ export function Footer() {
           <div>
             <a href="/" className="mb-4 flex items-center gap-2" data-testid="link-footer-home">
               <img
-                src="/images/logo-dragon.png"
+                src={logoPath}
                 alt="RuneCoins"
-                className="h-10 w-10 object-contain"
+                className="h-10 w-auto max-w-[120px] object-contain"
               />
-              <span className="text-lg font-bold">
-                <span className="text-primary">Rune</span>
-                <span className="text-accent">Coins</span>
-              </span>
             </a>
             <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
               Seu parceiro confiável para compra e venda de Paulistinha Coins. Transações rápidas, seguras e com os melhores preços do mercado.

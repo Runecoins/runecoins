@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Coins } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import logoPath from "@assets/image_1771376960094.png";
 
 const navLinks = [
   { label: "Comprar", href: "#comprar" },
@@ -18,15 +19,11 @@ export function Navbar() {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <a href="/" className="flex items-center gap-2" data-testid="link-home">
           <img
-            src="/images/logo-dragon.png"
-            alt="DraCoins Logo"
-            className="h-10 w-10 object-contain"
+            src={logoPath}
+            alt="RuneCoins Logo"
+            className="h-10 w-auto max-w-[120px] object-contain"
             data-testid="img-logo"
           />
-          <span className="text-xl font-bold tracking-tight">
-            <span className="text-primary">Rune</span>
-            <span className="text-accent">Coins</span>
-          </span>
         </a>
 
         <div className="hidden items-center gap-1 md:flex">

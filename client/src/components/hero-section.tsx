@@ -32,7 +32,7 @@ export function HeroSection() {
           transition={{ duration: 0.7, delay: 0.1 }}
         >
           Compre e Venda{" "}
-          <span className="bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-primary via-red-400 to-orange-500 bg-clip-text text-transparent">
             Tibia Coins
           </span>
           <br />

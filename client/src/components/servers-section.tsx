@@ -61,7 +61,7 @@ export function ServersSection() {
                     </div>
                     <div>
                       <p className="font-medium" data-testid={`text-server-${server.id}`}>{server.name}</p>
-                      <p className="text-xs text-accent">Online</p>
+                      <p className="text-xs text-green-500">Online</p>
                     </div>
                   </CardContent>
                 </Card>

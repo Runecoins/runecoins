@@ -316,7 +316,6 @@ function CoinForm({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="pix">PIX</SelectItem>
-              <SelectItem value="bank_transfer">Transferencia Bancaria</SelectItem>
               <SelectItem value="credit_card">Cartao de Credito</SelectItem>
             </SelectContent>
           </Select>

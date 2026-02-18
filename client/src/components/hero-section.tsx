@@ -75,7 +75,7 @@ export function HeroSection() {
           transition={{ duration: 0.7, delay: 0.5 }}
         >
           <div className="text-center">
-            <p className="text-2xl font-bold text-accent sm:text-3xl">4.9</p>
+            <p className="text-2xl font-bold text-green-700 dark:text-green-600 sm:text-3xl">4.9</p>
             <p className="text-xs text-muted-foreground sm:text-sm">Avaliacao Media</p>
           </div>
           <div className="h-8 w-px bg-border" />

@@ -4,6 +4,34 @@ import { storage } from "./storage";
 import { insertOrderSchema } from "@shared/schema";
 import { z } from "zod";
 import { createPixPayment, createCreditCardPayment, getOrderStatus } from "./pagarme";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import express from "express";
+
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const uploadStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({
+  storage: uploadStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = /jpeg|jpg|png|gif|webp/;
+    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+    const mime = allowed.test(file.mimetype);
+    cb(null, ext && mime);
+  },
+});
 
 const BUY_PRICE_PER_UNIT = 0.0799;
 const SELL_PRICE_PER_UNIT = 0.06;
@@ -31,6 +59,11 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.use("/uploads", (req, res, next) => {
+    res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+    next();
+  }, express.static(uploadsDir));
+
   app.get("/api/packages", async (_req, res) => {
     try {
       const packages = await storage.getPackages();
@@ -72,6 +105,70 @@ export async function registerRoutes(
       res.json(order);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch order" });
+    }
+  });
+
+  const sellOrderSchema = z.object({
+    characterName: z.string().min(1, "Nome do personagem obrigatorio"),
+    serverId: z.string().min(1, "Servidor obrigatorio"),
+    quantity: z.string().refine((v) => !isNaN(parseInt(v)) && parseInt(v) >= 25, "Quantidade minima: 25 coins"),
+    customerName: z.string().min(1, "Nome obrigatorio"),
+    customerEmail: z.string().email("E-mail invalido"),
+    customerPhone: z.string().min(10, "Telefone invalido"),
+    pixKey: z.string().min(1, "Chave PIX obrigatoria"),
+    pixAccountHolder: z.string().min(1, "Titular da conta obrigatorio"),
+  });
+
+  app.post("/api/sell-orders", upload.fields([
+    { name: "storeScreenshot", maxCount: 1 },
+    { name: "marketScreenshot", maxCount: 1 },
+  ]), async (req, res) => {
+    try {
+      const validated = sellOrderSchema.parse(req.body);
+      const qty = parseInt(validated.quantity);
+
+      const totalPrice = parseFloat((SELL_PRICE_PER_UNIT * qty).toFixed(2));
+
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const storeFile = files?.storeScreenshot?.[0];
+      const marketFile = files?.marketScreenshot?.[0];
+
+      const order = await storage.createOrder({
+        type: "sell",
+        characterName: validated.characterName,
+        serverId: validated.serverId,
+        packageId: "coins",
+        quantity: qty,
+        totalPrice: totalPrice.toFixed(2),
+        paymentMethod: "pix",
+        contactInfo: "",
+        pagarmeOrderId: null,
+        pagarmeChargeId: null,
+        pixQrCode: null,
+        pixQrCodeUrl: null,
+        customerName: validated.customerName,
+        customerEmail: validated.customerEmail,
+        customerPhone: validated.customerPhone,
+        pixKey: validated.pixKey,
+        pixAccountHolder: validated.pixAccountHolder,
+        storeScreenshot: storeFile ? `/uploads/${storeFile.filename}` : null,
+        marketScreenshot: marketFile ? `/uploads/${marketFile.filename}` : null,
+      });
+
+      res.status(201).json({
+        orderId: order.id,
+        quantity: qty,
+        totalPrice: totalPrice.toFixed(2),
+        pixKey: validated.pixKey,
+        status: "pending",
+      });
+    } catch (error: any) {
+      console.error("Sell order error:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Dados invalidos", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Erro ao criar pedido de venda." });
+      }
     }
   });
 

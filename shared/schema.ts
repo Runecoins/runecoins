@@ -42,6 +42,13 @@ export const orders = pgTable("orders", {
   pagarmeChargeId: text("pagarme_charge_id"),
   pixQrCode: text("pix_qr_code"),
   pixQrCodeUrl: text("pix_qr_code_url"),
+  customerName: text("customer_name"),
+  customerEmail: text("customer_email"),
+  customerPhone: text("customer_phone"),
+  pixKey: text("pix_key"),
+  pixAccountHolder: text("pix_account_holder"),
+  storeScreenshot: text("store_screenshot"),
+  marketScreenshot: text("market_screenshot"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

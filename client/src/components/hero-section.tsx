@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Zap, ArrowDown } from "lucide-react";
 import { motion } from "framer-motion";
+import logoPath from "@assets/image_1771387321993.png";
 
 export function HeroSection() {
   return (
@@ -15,9 +16,23 @@ export function HeroSection() {
 
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-20 text-center sm:px-6">
         <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7 }}
+          className="mb-6"
+        >
+          <img
+            src={logoPath}
+            alt="RuneCoins"
+            className="mx-auto h-40 w-auto drop-shadow-2xl sm:h-52 md:h-60"
+            data-testid="img-hero-logo"
+          />
+        </motion.div>
+
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
         >
           <Badge variant="outline" className="mb-6 border-primary/40 text-primary">
             <Zap className="mr-1 h-3 w-3" />

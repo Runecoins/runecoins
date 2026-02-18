@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ShoppingCart, Wallet, Calculator, Loader2, CheckCircle, X, Copy, Check } from "lucide-react";
+import { ShoppingCart, Wallet, Calculator, Loader2, CheckCircle, X, Copy, Check, Upload, ArrowLeft, ArrowRight, Clock } from "lucide-react";
 import type { CoinPackage, Server } from "@shared/schema";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const quantityPresets = [25, 50, 100, 250, 500, 1000, 5000, 10000];
 const BUY_PRICE_PER_UNIT = 0.0799;
@@ -31,6 +31,7 @@ export function CoinCalculator() {
     setActiveTab(tab);
     setPaymentMethod("");
     setShowCheckout(false);
+    setSellStep(1);
   };
   const [quantity, setQuantity] = useState(250);
   const [characterName, setCharacterName] = useState("");
@@ -49,6 +50,14 @@ export function CoinCalculator() {
   const [cardExpMonth, setCardExpMonth] = useState("");
   const [cardExpYear, setCardExpYear] = useState("");
   const [cardCvv, setCardCvv] = useState("");
+
+  const [sellStep, setSellStep] = useState(1);
+  const [sellPixKey, setSellPixKey] = useState("");
+  const [sellPixHolder, setSellPixHolder] = useState("");
+  const [storeScreenshot, setStoreScreenshot] = useState<File | null>(null);
+  const [marketScreenshot, setMarketScreenshot] = useState<File | null>(null);
+  const [sellOrderId, setSellOrderId] = useState("");
+  const [sellComplete, setSellComplete] = useState(false);
 
   const { data: packages = [], isLoading: packagesLoading } = useQuery<CoinPackage[]>({
     queryKey: ["/api/packages"],
@@ -98,6 +107,32 @@ export function CoinCalculator() {
     },
   });
 
+  const sellMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const res = await fetch("/api/sell-orders", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Erro ao criar pedido");
+      }
+      return res.json();
+    },
+    onSuccess: (result) => {
+      setSellOrderId(result.orderId);
+      setSellComplete(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error?.message || "Nao foi possivel criar o pedido de venda.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setCharacterName("");
     setContactInfo("");
@@ -113,6 +148,22 @@ export function CoinCalculator() {
     setCardExpMonth("");
     setCardExpYear("");
     setCardCvv("");
+  };
+
+  const resetSellForm = () => {
+    setSellStep(1);
+    setCharacterName("");
+    setSelectedServer("");
+    setCustomerName("");
+    setCustomerEmail("");
+    setCustomerPhone("");
+    setSellPixKey("");
+    setSellPixHolder("");
+    setStoreScreenshot(null);
+    setMarketScreenshot(null);
+    setSellOrderId("");
+    setSellComplete(false);
+    setQuantity(250);
   };
 
   const handleProceedToCheckout = (type: "buy" | "sell") => {
@@ -168,6 +219,21 @@ export function CoinCalculator() {
     }
 
     paymentMutation.mutate(payload);
+  };
+
+  const handleSubmitSellOrder = () => {
+    const formData = new FormData();
+    formData.append("characterName", characterName.trim());
+    formData.append("serverId", selectedServer);
+    formData.append("quantity", quantity.toString());
+    formData.append("customerName", customerName.trim());
+    formData.append("customerEmail", customerEmail.trim());
+    formData.append("customerPhone", customerPhone.replace(/\D/g, ""));
+    formData.append("pixKey", sellPixKey.trim());
+    formData.append("pixAccountHolder", sellPixHolder.trim());
+    if (storeScreenshot) formData.append("storeScreenshot", storeScreenshot);
+    if (marketScreenshot) formData.append("marketScreenshot", marketScreenshot);
+    sellMutation.mutate(formData);
   };
 
   if (packagesLoading) {
@@ -300,55 +366,38 @@ export function CoinCalculator() {
                 </TabsContent>
 
                 <TabsContent value="vender" className="mt-0 space-y-6">
-                  {showCheckout ? (
-                    <CheckoutForm
-                      type="sell"
-                      paymentMethod={paymentMethod}
-                      quantity={quantity}
-                      totalPrice={sellPrice}
-                      customerName={customerName}
-                      setCustomerName={setCustomerName}
-                      customerEmail={customerEmail}
-                      setCustomerEmail={setCustomerEmail}
-                      customerDocument={customerDocument}
-                      setCustomerDocument={setCustomerDocument}
-                      customerPhone={customerPhone}
-                      setCustomerPhone={setCustomerPhone}
-                      cardNumber={cardNumber}
-                      setCardNumber={setCardNumber}
-                      cardHolderName={cardHolderName}
-                      setCardHolderName={setCardHolderName}
-                      cardExpMonth={cardExpMonth}
-                      setCardExpMonth={setCardExpMonth}
-                      cardExpYear={cardExpYear}
-                      setCardExpYear={setCardExpYear}
-                      cardCvv={cardCvv}
-                      setCardCvv={setCardCvv}
-                      onSubmit={() => handlePayment("sell")}
-                      onBack={() => setShowCheckout(false)}
-                      isPending={paymentMutation.isPending}
-                    />
-                  ) : (
-                    <CoinForm
-                      type="sell"
-                      quantity={quantity}
-                      setQuantity={setQuantity}
-                      characterName={characterName}
-                      setCharacterName={setCharacterName}
-                      selectedServer={selectedServer}
-                      setSelectedServer={setSelectedServer}
-                      contactInfo={contactInfo}
-                      setContactInfo={setContactInfo}
-                      paymentMethod={paymentMethod}
-                      setPaymentMethod={setPaymentMethod}
-                      servers={servers}
-                      serversLoading={serversLoading}
-                      pricePerUnit={SELL_PRICE_PER_UNIT}
-                      totalPrice={sellPrice}
-                      onSubmit={() => handleProceedToCheckout("sell")}
-                      isPending={false}
-                    />
-                  )}
+                  <SellWizard
+                    step={sellStep}
+                    setStep={setSellStep}
+                    quantity={quantity}
+                    setQuantity={setQuantity}
+                    characterName={characterName}
+                    setCharacterName={setCharacterName}
+                    selectedServer={selectedServer}
+                    setSelectedServer={setSelectedServer}
+                    customerName={customerName}
+                    setCustomerName={setCustomerName}
+                    customerEmail={customerEmail}
+                    setCustomerEmail={setCustomerEmail}
+                    customerPhone={customerPhone}
+                    setCustomerPhone={setCustomerPhone}
+                    sellPixKey={sellPixKey}
+                    setSellPixKey={setSellPixKey}
+                    sellPixHolder={sellPixHolder}
+                    setSellPixHolder={setSellPixHolder}
+                    storeScreenshot={storeScreenshot}
+                    setStoreScreenshot={setStoreScreenshot}
+                    marketScreenshot={marketScreenshot}
+                    setMarketScreenshot={setMarketScreenshot}
+                    servers={servers}
+                    serversLoading={serversLoading}
+                    totalPrice={sellPrice}
+                    onSubmit={handleSubmitSellOrder}
+                    isPending={sellMutation.isPending}
+                    sellComplete={sellComplete}
+                    sellOrderId={sellOrderId}
+                    onReset={resetSellForm}
+                  />
                 </TabsContent>
               </CardContent>
             </Tabs>
@@ -356,6 +405,421 @@ export function CoinCalculator() {
         </motion.div>
       </div>
     </section>
+  );
+}
+
+interface SellWizardProps {
+  step: number;
+  setStep: (v: number) => void;
+  quantity: number;
+  setQuantity: (v: number) => void;
+  characterName: string;
+  setCharacterName: (v: string) => void;
+  selectedServer: string;
+  setSelectedServer: (v: string) => void;
+  customerName: string;
+  setCustomerName: (v: string) => void;
+  customerEmail: string;
+  setCustomerEmail: (v: string) => void;
+  customerPhone: string;
+  setCustomerPhone: (v: string) => void;
+  sellPixKey: string;
+  setSellPixKey: (v: string) => void;
+  sellPixHolder: string;
+  setSellPixHolder: (v: string) => void;
+  storeScreenshot: File | null;
+  setStoreScreenshot: (v: File | null) => void;
+  marketScreenshot: File | null;
+  setMarketScreenshot: (v: File | null) => void;
+  servers: Server[];
+  serversLoading: boolean;
+  totalPrice: number;
+  onSubmit: () => void;
+  isPending: boolean;
+  sellComplete: boolean;
+  sellOrderId: string;
+  onReset: () => void;
+}
+
+function SellWizard(props: SellWizardProps) {
+  const { toast } = useToast();
+  const storeFileRef = useRef<HTMLInputElement>(null);
+  const marketFileRef = useRef<HTMLInputElement>(null);
+
+  const {
+    step, setStep, quantity, setQuantity,
+    characterName, setCharacterName, selectedServer, setSelectedServer,
+    customerName, setCustomerName, customerEmail, setCustomerEmail,
+    customerPhone, setCustomerPhone,
+    sellPixKey, setSellPixKey, sellPixHolder, setSellPixHolder,
+    storeScreenshot, setStoreScreenshot, marketScreenshot, setMarketScreenshot,
+    servers, serversLoading, totalPrice, onSubmit, isPending,
+    sellComplete, sellOrderId, onReset,
+  } = props;
+
+  const totalSteps = 6;
+
+  const validateAndNext = () => {
+    if (step === 1) {
+      if (quantity < 25) {
+        toast({ title: "Erro", description: "Quantidade minima: 25 coins.", variant: "destructive" });
+        return;
+      }
+    }
+    if (step === 2) {
+      if (!characterName.trim()) {
+        toast({ title: "Erro", description: "Informe o nome do personagem.", variant: "destructive" });
+        return;
+      }
+      if (!selectedServer) {
+        toast({ title: "Erro", description: "Selecione um servidor.", variant: "destructive" });
+        return;
+      }
+    }
+    if (step === 4) {
+      if (!customerName.trim() || !customerEmail.trim() || !customerPhone.trim()) {
+        toast({ title: "Erro", description: "Preencha todos os campos.", variant: "destructive" });
+        return;
+      }
+    }
+    if (step === 5) {
+      if (!sellPixKey.trim() || !sellPixHolder.trim()) {
+        toast({ title: "Erro", description: "Preencha a chave PIX e o titular.", variant: "destructive" });
+        return;
+      }
+    }
+    setStep(Math.min(step + 1, totalSteps));
+  };
+
+  if (sellComplete) {
+    return (
+      <div className="space-y-6 py-4 text-center">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 15 }}
+        >
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20">
+            <CheckCircle className="h-10 w-10 text-green-500" />
+          </div>
+        </motion.div>
+        <h3 className="text-2xl font-bold">Pedido Criado com Sucesso!</h3>
+        <p className="text-muted-foreground">
+          Seu pedido de venda foi registrado. Aguarde a confirmacao do recebimento das coins.
+          Apos a verificacao, o pagamento sera enviado para sua chave PIX.
+        </p>
+        <Card className="border-primary/20">
+          <CardContent className="p-4">
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Pedido:</span>
+                <span className="font-mono font-medium" data-testid="text-sell-order-id">#{sellOrderId.slice(0, 8)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Quantidade:</span>
+                <span className="font-medium">{quantity.toLocaleString("pt-BR")} coins</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Valor a receber:</span>
+                <span className="font-bold text-primary">R$ {totalPrice.toFixed(2)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="flex items-center justify-center gap-2 rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
+          <Clock className="h-4 w-4" />
+          Aguarde a verificacao. Voce sera contatado em breve.
+        </div>
+        <Button variant="outline" className="w-full" onClick={onReset} data-testid="button-sell-new-order">
+          Fazer novo pedido
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-2">
+        {Array.from({ length: totalSteps }).map((_, i) => (
+          <div
+            key={i}
+            className={`h-1.5 flex-1 rounded-full transition-colors ${
+              i + 1 <= step ? "bg-primary" : "bg-muted"
+            }`}
+            data-testid={`sell-step-indicator-${i + 1}`}
+          />
+        ))}
+      </div>
+      <p className="text-center text-xs text-muted-foreground">Passo {step} de {totalSteps}</p>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.2 }}
+        >
+          {step === 1 && (
+            <div className="space-y-4">
+              <h3 className="text-center text-lg font-semibold" data-testid="text-sell-step-title">
+                Selecione a quantidade de coins que deseja vender
+              </h3>
+              <div className="flex flex-wrap justify-center gap-2">
+                {quantityPresets.map((preset) => (
+                  <Badge
+                    key={preset}
+                    variant={quantity === preset ? "default" : "secondary"}
+                    className="cursor-pointer tabular-nums"
+                    onClick={() => setQuantity(preset)}
+                    data-testid={`badge-sell-quantity-${preset}`}
+                  >
+                    {preset.toLocaleString("pt-BR")}
+                  </Badge>
+                ))}
+              </div>
+              <Input
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 0))}
+                min={25}
+                max={100000}
+                className="text-center text-lg"
+                data-testid="input-sell-quantity"
+              />
+              <Card className="border-primary/20 bg-muted/30">
+                <CardContent className="p-3 text-center">
+                  <p className="text-sm text-muted-foreground">Voce recebera:</p>
+                  <p className="text-2xl font-bold text-primary">R$ {totalPrice.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">{quantity.toLocaleString("pt-BR")} coins x R$ {SELL_PRICE_PER_UNIT.toFixed(4)}</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-4">
+              <h3 className="text-center text-lg font-semibold" data-testid="text-sell-step2-title">
+                Qual personagem enviara as {quantity.toLocaleString("pt-BR")} coins?
+              </h3>
+              <div>
+                <Label className="mb-1 block text-sm font-medium">Personagem</Label>
+                <Input
+                  placeholder="Nome do personagem..."
+                  value={characterName}
+                  onChange={(e) => setCharacterName(e.target.value)}
+                  data-testid="input-sell-character"
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-sm font-medium">Servidor</Label>
+                <Select value={selectedServer} onValueChange={setSelectedServer}>
+                  <SelectTrigger data-testid="select-sell-server">
+                    <SelectValue placeholder="Selecione o servidor..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {serversLoading ? (
+                      <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                    ) : (
+                      servers.filter((s) => s.active).map((server) => (
+                        <SelectItem key={server.id} value={server.id}>
+                          {server.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-4">
+              <h3 className="text-center text-lg font-semibold" data-testid="text-sell-step3-title">
+                Mostre-me seu historico da Store e do Market
+              </h3>
+              <p className="text-center text-sm text-muted-foreground">
+                Envie prints do historico antes de nos enviar as coins.
+                Se tiver problemas para tirar prints, use o celular para tirar uma foto.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label className="mb-1 block text-sm font-medium">Print do Historico da STORE</Label>
+                  <div
+                    className="hover-elevate flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-border p-6 text-center transition-colors"
+                    onClick={() => storeFileRef.current?.click()}
+                    data-testid="upload-store-screenshot"
+                  >
+                    <Upload className="h-6 w-6 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {storeScreenshot ? storeScreenshot.name : "Escolher arquivo"}
+                    </span>
+                  </div>
+                  <input
+                    ref={storeFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => setStoreScreenshot(e.target.files?.[0] || null)}
+                  />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-sm font-medium">Print do Historico do MARKET</Label>
+                  <div
+                    className="hover-elevate flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-border p-6 text-center transition-colors"
+                    onClick={() => marketFileRef.current?.click()}
+                    data-testid="upload-market-screenshot"
+                  >
+                    <Upload className="h-6 w-6 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {marketScreenshot ? marketScreenshot.name : "Escolher arquivo"}
+                    </span>
+                  </div>
+                  <input
+                    ref={marketFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => setMarketScreenshot(e.target.files?.[0] || null)}
+                  />
+                </div>
+              </div>
+              <p className="text-center text-xs text-muted-foreground">
+                Se preferir, voce pode arrastar a print para os campos acima.
+              </p>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-4">
+              <h3 className="text-center text-lg font-semibold" data-testid="text-sell-step4-title">
+                Agora diga-me suas informacoes!
+              </h3>
+              <p className="text-center text-sm text-muted-foreground">Informacoes pessoais:</p>
+              <div>
+                <Label className="mb-1 block text-sm font-medium">Seu nome</Label>
+                <Input
+                  placeholder="Seu nome completo"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  data-testid="input-sell-name"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label className="mb-1 block text-sm font-medium">E-mail</Label>
+                  <Input
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    data-testid="input-sell-email"
+                  />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-sm font-medium">Telefone</Label>
+                  <Input
+                    placeholder="(11) 99999-9999"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    data-testid="input-sell-phone"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div className="space-y-4">
+              <h3 className="text-center text-lg font-semibold" data-testid="text-sell-step5-title">
+                Agora diga-me as informacoes do pagamento!
+              </h3>
+              <p className="text-center text-sm text-muted-foreground">
+                Garanta que esta digitando corretamente
+              </p>
+              <p className="text-sm font-medium text-muted-foreground">Informacoes de recebimento:</p>
+              <div>
+                <Label className="mb-1 block text-sm font-medium">Chave PIX</Label>
+                <Input
+                  placeholder="Sua chave PIX"
+                  value={sellPixKey}
+                  onChange={(e) => setSellPixKey(e.target.value)}
+                  data-testid="input-sell-pix-key"
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-sm font-medium">Titular da conta</Label>
+                <Input
+                  placeholder="Nome do titular da conta"
+                  value={sellPixHolder}
+                  onChange={(e) => setSellPixHolder(e.target.value)}
+                  data-testid="input-sell-pix-holder"
+                />
+              </div>
+            </div>
+          )}
+
+          {step === 6 && (
+            <div className="space-y-4">
+              <h3 className="text-center text-lg font-semibold" data-testid="text-sell-step6-title">
+                Envie {quantity.toLocaleString("pt-BR")} coins para RuneCoins
+              </h3>
+              <p className="text-center text-sm text-muted-foreground">
+                CLIQUE EM GERAR PEDIDO
+              </p>
+              <Card className="border-primary/20">
+                <CardContent className="space-y-2 p-4 text-center">
+                  <p className="text-lg font-bold">
+                    {quantity.toLocaleString("pt-BR")} coins por R$ {totalPrice.toFixed(2)}
+                  </p>
+                  <p className="text-sm text-primary">Chave PIX</p>
+                  <p className="font-medium">{sellPixKey}</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="flex gap-3">
+        {step > 1 && (
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => setStep(step - 1)}
+            data-testid="button-sell-back"
+          >
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Voltar
+          </Button>
+        )}
+        {step < totalSteps && (
+          <Button
+            className="flex-1"
+            onClick={validateAndNext}
+            data-testid="button-sell-next"
+          >
+            Continuar
+            <ArrowRight className="ml-1 h-4 w-4" />
+          </Button>
+        )}
+        {step === totalSteps && (
+          <Button
+            className="flex-1"
+            onClick={onSubmit}
+            disabled={isPending}
+            data-testid="button-sell-generate"
+          >
+            {isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle className="mr-2 h-4 w-4" />
+            )}
+            Gerar Pedido
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -510,7 +974,7 @@ function CoinForm({
             ) : (
               <CheckCircle className="mr-2 h-4 w-4" />
             )}
-            {type === "buy" ? "Continuar para Pagamento" : "Continuar para Pagamento"}
+            Continuar para Pagamento
           </Button>
         </CardContent>
       </Card>

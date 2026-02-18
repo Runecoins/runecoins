@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Menu, X, Coins, LogIn, UserPlus } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthModals } from "@/components/auth-modals";
-import logoPath from "@assets/image_1771387321993.png";
+import logoPath from "@assets/920361e1-d9d6-42a7-b8f4-a1c173bc7ed1-removebg-preview_1771388848903.png";
 
 const navLinks = [
   { label: "Comprar", href: "#comprar" },

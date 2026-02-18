@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Zap, ArrowDown } from "lucide-react";
 import { motion } from "framer-motion";
-import logoPath from "@assets/image_1771387321993.png";
+import logoPath from "@assets/920361e1-d9d6-42a7-b8f4-a1c173bc7ed1-removebg-preview_1771388848903.png";
 
 export function HeroSection() {
   return (

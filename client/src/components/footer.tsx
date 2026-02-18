@@ -2,7 +2,7 @@ import { SiDiscord, SiInstagram, SiWhatsapp } from "react-icons/si";
 import logoPath from "@assets/image_1771376960094.png";
 
 const socialLinks = [
-  { icon: SiInstagram, label: "Instagram", href: "#" },
+  { icon: SiInstagram, label: "Instagram", href: "https://www.instagram.com/runecoinsot/" },
   { icon: SiDiscord, label: "Discord", href: "#" },
   { icon: SiWhatsapp, label: "WhatsApp", href: "#" },
 ];
@@ -55,6 +55,8 @@ export function Footer() {
                 <a
                   key={social.label}
                   href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="rounded-md bg-muted p-2 text-muted-foreground transition-colors hover:text-foreground"
                   data-testid={`link-social-${social.label.toLowerCase()}`}
                 >

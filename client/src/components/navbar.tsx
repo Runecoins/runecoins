@@ -6,6 +6,7 @@ import { AuthModals } from "@/components/auth-modals";
 import { useAuth } from "@/lib/auth";
 import { useLocation } from "wouter";
 import logoPath from "@assets/920361e1-d9d6-42a7-b8f4-a1c173bc7ed1-removebg-preview_1771388848903.png";
+import instagramIconPath from "@assets/image_1771438136331.png";
 
 const navLinks = [
   { label: "Comprar", href: "#comprar" },
@@ -57,6 +58,18 @@ export function Navbar() {
           </div>
 
           <div className="hidden items-center gap-2 md:flex">
+            <a
+              href="https://www.instagram.com/runecoinsot/"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="link-instagram"
+            >
+              <img
+                src={instagramIconPath}
+                alt="Instagram"
+                className="h-9 w-9 rounded-md object-contain"
+              />
+            </a>
             <ThemeToggle />
             {user ? (
               <>
@@ -119,6 +132,16 @@ export function Navbar() {
                   </a>
                 </Button>
               ))}
+              <a
+                href="https://www.instagram.com/runecoinsot/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-1"
+                data-testid="link-instagram-mobile"
+              >
+                <img src={instagramIconPath} alt="Instagram" className="h-7 w-7 rounded-md object-contain" />
+                <span className="text-sm text-muted-foreground">Instagram</span>
+              </a>
               <div className="mt-2 flex flex-col gap-2">
                 {user ? (
                   <>

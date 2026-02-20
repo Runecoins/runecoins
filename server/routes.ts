@@ -208,6 +208,24 @@ export async function registerRoutes(
     });
   });
 
+  app.get("/api/admin/users", requireAdmin, async (_req, res) => {
+    try {
+      const allUsers = await storage.getUsers();
+      const safeUsers = allUsers.map(u => ({
+        id: u.id,
+        username: u.username,
+        email: u.email,
+        fullName: u.fullName,
+        phone: u.phone,
+        role: u.role,
+        createdAt: u.createdAt,
+      }));
+      res.json(safeUsers);
+    } catch (error) {
+      res.status(500).json({ error: "Erro ao listar usuarios" });
+    }
+  });
+
   app.get("/api/admin/orders", requireAdmin, async (_req, res) => {
     try {
       const allOrders = await storage.getOrders();

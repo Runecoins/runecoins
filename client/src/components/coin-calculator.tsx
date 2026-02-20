@@ -580,7 +580,7 @@ function SellWizard(props: SellWizardProps) {
                     {serversLoading ? (
                       <SelectItem value="loading" disabled>Carregando...</SelectItem>
                     ) : (
-                      servers.filter((s) => s.active).map((server) => (
+                      servers.filter((s) => s.active && s.name === "Deletera").map((server) => (
                         <SelectItem key={server.id} value={server.id}>
                           {server.name}
                         </SelectItem>
@@ -595,12 +595,18 @@ function SellWizard(props: SellWizardProps) {
           {step === 3 && (
             <div className="space-y-4">
               <h3 className="text-center text-lg font-semibold" data-testid="text-sell-step3-title">
-                Mostre-me seu historico da Store e do Market
+                Envie as Coins e nos mostre o comprovante
               </h3>
-              <p className="text-center text-sm text-muted-foreground">
-                Envie prints do historico antes de nos enviar as coins.
-                Se tiver problemas para tirar prints, use o celular para tirar uma foto.
-              </p>
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="p-4 text-center">
+                  <p className="text-sm font-bold text-primary uppercase">
+                    ENVIE AS COINS PARA O PERSONAGEM "RUNECOINS" NO SERVIDOR DELETERA
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Caso voce nao possua um personagem no servidor, basta criar um char no servidor Deletera e envie o print abaixo.
+                  </p>
+                </CardContent>
+              </Card>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label className="mb-1 block text-sm font-medium">Print do Historico da STORE</Label>
@@ -644,7 +650,7 @@ function SellWizard(props: SellWizardProps) {
                 </div>
               </div>
               <p className="text-center text-xs text-muted-foreground">
-                Se preferir, voce pode arrastar a print para os campos acima.
+                Envie prints comprovando o envio das coins.
               </p>
             </div>
           )}

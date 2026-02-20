@@ -9,9 +9,9 @@ import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   ShoppingCart, TrendingUp, Clock, CheckCircle, ArrowLeft,
-  Search, Filter, Eye, ChevronDown, ChevronUp, X, Image
+  Search, Filter, Eye, ChevronDown, ChevronUp, X, Image, Users
 } from "lucide-react";
-import type { Order } from "@shared/schema";
+import type { Order, User } from "@shared/schema";
 
 const statusLabels: Record<string, string> = {
   pending: "Pendente",
@@ -34,11 +34,13 @@ const statusColors: Record<string, string> = {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState<"orders" | "clients">("orders");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [imageModal, setImageModal] = useState<string | null>(null);
+  const [clientSearch, setClientSearch] = useState("");
 
   const { data: stats } = useQuery<{ total: number; pending: number; paid: number; sell: number; buy: number }>({
     queryKey: ["/api/admin/stats"],
@@ -50,6 +52,11 @@ export default function AdminPage() {
     queryKey: ["/api/admin/orders"],
     enabled: !!user && user.role === "admin",
     refetchInterval: 10000,
+  });
+
+  const { data: clients = [], isLoading: clientsLoading } = useQuery<Omit<User, "password">[]>({
+    queryKey: ["/api/admin/users"],
+    enabled: !!user && user.role === "admin",
   });
 
   const updateStatusMutation = useMutation({
@@ -159,7 +166,87 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        <Card className="p-4" data-testid="card-orders">
+        <div className="mb-6 flex gap-2">
+          <Button
+            variant={activeTab === "orders" ? "default" : "outline"}
+            onClick={() => setActiveTab("orders")}
+            data-testid="button-tab-orders"
+          >
+            <ShoppingCart className="mr-1.5 h-4 w-4" />
+            Pedidos
+          </Button>
+          <Button
+            variant={activeTab === "clients" ? "default" : "outline"}
+            onClick={() => setActiveTab("clients")}
+            data-testid="button-tab-clients"
+          >
+            <Users className="mr-1.5 h-4 w-4" />
+            Clientes Cadastrados
+          </Button>
+        </div>
+
+        {activeTab === "clients" && (
+          <Card className="p-4" data-testid="card-clients">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-lg font-bold text-foreground" data-testid="text-clients-title">Clientes Cadastrados</h2>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar cliente..."
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  className="pl-8"
+                  data-testid="input-search-clients"
+                />
+              </div>
+            </div>
+            {clientsLoading ? (
+              <div className="py-12 text-center text-muted-foreground">Carregando clientes...</div>
+            ) : clients.filter(c => c.role !== "admin").length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground" data-testid="text-no-clients">Nenhum cliente cadastrado</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left">
+                      <th className="pb-2 pr-4 font-medium text-muted-foreground">Nome</th>
+                      <th className="pb-2 pr-4 font-medium text-muted-foreground">Usuario</th>
+                      <th className="pb-2 pr-4 font-medium text-muted-foreground">E-mail</th>
+                      <th className="pb-2 pr-4 font-medium text-muted-foreground">Telefone</th>
+                      <th className="pb-2 font-medium text-muted-foreground">Cadastro</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clients
+                      .filter(c => c.role !== "admin")
+                      .filter(c => {
+                        if (!clientSearch) return true;
+                        const term = clientSearch.toLowerCase();
+                        return (
+                          c.fullName?.toLowerCase().includes(term) ||
+                          c.username.toLowerCase().includes(term) ||
+                          c.email?.toLowerCase().includes(term) ||
+                          c.phone?.toLowerCase().includes(term)
+                        );
+                      })
+                      .map((client) => (
+                        <tr key={client.id} className="border-b border-border/50" data-testid={`row-client-${client.id}`}>
+                          <td className="py-3 pr-4 font-medium text-foreground">{client.fullName || "-"}</td>
+                          <td className="py-3 pr-4 text-foreground">{client.username}</td>
+                          <td className="py-3 pr-4 text-foreground">{client.email || "-"}</td>
+                          <td className="py-3 pr-4 text-foreground">{client.phone || "-"}</td>
+                          <td className="py-3 text-muted-foreground">{client.createdAt ? new Date(client.createdAt).toLocaleDateString("pt-BR") : "-"}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {activeTab === "orders" && (
+          <Card className="p-4" data-testid="card-orders">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-bold text-foreground" data-testid="text-orders-title">Pedidos</h2>
             <div className="flex flex-wrap items-center gap-2">
@@ -220,6 +307,7 @@ export default function AdminPage() {
             </div>
           )}
         </Card>
+        )}
       </main>
 
       {imageModal && (

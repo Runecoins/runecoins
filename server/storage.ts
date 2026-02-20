@@ -12,6 +12,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser & { email?: string; fullName?: string; phone?: string; role?: string }): Promise<User>;
+  getUsers(): Promise<User[]>;
 
   getPackages(): Promise<CoinPackage[]>;
   getPackage(id: string): Promise<CoinPackage | undefined>;
@@ -50,6 +51,10 @@ export class DatabaseStorage implements IStorage {
   async createUser(insertUser: InsertUser & { email?: string; fullName?: string; phone?: string; role?: string }): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
+  }
+
+  async getUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(desc(users.createdAt));
   }
 
   async getPackages(): Promise<CoinPackage[]> {

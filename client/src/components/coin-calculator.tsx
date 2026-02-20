@@ -21,7 +21,8 @@ const SELL_PRICE_PER_UNIT = 0.0649;
 interface PixResult {
   orderId: string;
   pixQrCode: string;
-  pixQrCodeUrl: string;
+  pixQrCodeBase64: string;
+  ticketUrl: string;
 }
 
 export function CoinCalculator() {
@@ -45,11 +46,6 @@ export function CoinCalculator() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerDocument, setCustomerDocument] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardHolderName, setCardHolderName] = useState("");
-  const [cardExpMonth, setCardExpMonth] = useState("");
-  const [cardExpYear, setCardExpYear] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
 
   const [sellStep, setSellStep] = useState(1);
   const [sellPixKey, setSellPixKey] = useState("");
@@ -70,9 +66,7 @@ export function CoinCalculator() {
   const activePackages = packages.filter((p) => p.active);
   const currentPkg = activePackages.length > 0 ? activePackages[0] : null;
 
-  const baseBuyPrice = BUY_PRICE_PER_UNIT * quantity;
-  const creditCardSurcharge = paymentMethod === "credit_card" ? 0.05 : 0;
-  const buyPrice = baseBuyPrice * (1 + creditCardSurcharge);
+  const buyPrice = BUY_PRICE_PER_UNIT * quantity;
   const sellPrice = SELL_PRICE_PER_UNIT * quantity;
 
   const paymentMutation = useMutation({
@@ -85,16 +79,9 @@ export function CoinCalculator() {
         setPixResult({
           orderId: result.orderId,
           pixQrCode: result.pixQrCode,
-          pixQrCodeUrl: result.pixQrCodeUrl,
+          pixQrCodeBase64: result.pixQrCodeBase64 || "",
+          ticketUrl: result.ticketUrl || "",
         });
-      } else {
-        toast({
-          title: "Pagamento Processado!",
-          description: result.status === "paid"
-            ? "Pagamento aprovado com sucesso!"
-            : "Pagamento em processamento. Voce sera notificado.",
-        });
-        resetForm();
       }
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
     },
@@ -143,11 +130,6 @@ export function CoinCalculator() {
     setCustomerEmail("");
     setCustomerDocument("");
     setCustomerPhone("");
-    setCardNumber("");
-    setCardHolderName("");
-    setCardExpMonth("");
-    setCardExpYear("");
-    setCardCvv("");
   };
 
   const resetSellForm = () => {
@@ -204,19 +186,6 @@ export function CoinCalculator() {
       customerDocument: customerDocument.replace(/\D/g, ""),
       customerPhone: customerPhone.replace(/\D/g, ""),
     };
-
-    if (paymentMethod === "credit_card") {
-      if (!cardNumber || !cardHolderName || !cardExpMonth || !cardExpYear || !cardCvv) {
-        toast({ title: "Erro", description: "Preencha todos os dados do cartao.", variant: "destructive" });
-        return;
-      }
-      payload.cardNumber = cardNumber.replace(/\s/g, "");
-      payload.cardHolderName = cardHolderName.trim();
-      payload.cardExpMonth = parseInt(cardExpMonth);
-      payload.cardExpYear = parseInt(cardExpYear);
-      payload.cardCvv = cardCvv;
-      payload.installments = 1;
-    }
 
     paymentMutation.mutate(payload);
   };
@@ -328,16 +297,6 @@ export function CoinCalculator() {
                       setCustomerDocument={setCustomerDocument}
                       customerPhone={customerPhone}
                       setCustomerPhone={setCustomerPhone}
-                      cardNumber={cardNumber}
-                      setCardNumber={setCardNumber}
-                      cardHolderName={cardHolderName}
-                      setCardHolderName={setCardHolderName}
-                      cardExpMonth={cardExpMonth}
-                      setCardExpMonth={setCardExpMonth}
-                      cardExpYear={cardExpYear}
-                      setCardExpYear={setCardExpYear}
-                      cardCvv={cardCvv}
-                      setCardCvv={setCardCvv}
                       onSubmit={() => handlePayment("buy")}
                       onBack={() => setShowCheckout(false)}
                       isPending={paymentMutation.isPending}
@@ -931,9 +890,6 @@ function CoinForm({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="pix">PIX</SelectItem>
-              {type === "buy" && (
-                <SelectItem value="credit_card">Cartao de Credito (+5%)</SelectItem>
-              )}
             </SelectContent>
           </Select>
         </div>
@@ -955,7 +911,6 @@ function CoinForm({
             <div>
               <p className="text-sm text-muted-foreground" data-testid="text-price-breakdown">
                 {quantity.toLocaleString("pt-BR")} coins x R$ {pricePerUnit.toFixed(4)}
-                {paymentMethod === "credit_card" && type === "buy" && " (+5% cartao)"}
               </p>
               <p className="text-2xl font-bold">
                 R$ <span className="text-primary" data-testid="text-total-price">{totalPrice.toFixed(2)}</span>
@@ -995,16 +950,6 @@ interface CheckoutFormProps {
   setCustomerDocument: (v: string) => void;
   customerPhone: string;
   setCustomerPhone: (v: string) => void;
-  cardNumber: string;
-  setCardNumber: (v: string) => void;
-  cardHolderName: string;
-  setCardHolderName: (v: string) => void;
-  cardExpMonth: string;
-  setCardExpMonth: (v: string) => void;
-  cardExpYear: string;
-  setCardExpYear: (v: string) => void;
-  cardCvv: string;
-  setCardCvv: (v: string) => void;
   onSubmit: () => void;
   onBack: () => void;
   isPending: boolean;
@@ -1023,16 +968,6 @@ function CheckoutForm({
   setCustomerDocument,
   customerPhone,
   setCustomerPhone,
-  cardNumber,
-  setCardNumber,
-  cardHolderName,
-  setCardHolderName,
-  cardExpMonth,
-  setCardExpMonth,
-  cardExpYear,
-  setCardExpYear,
-  cardCvv,
-  setCardCvv,
   onSubmit,
   onBack,
   isPending,
@@ -1049,7 +984,7 @@ function CheckoutForm({
       <Card className="border-primary/10 bg-muted/30">
         <CardContent className="p-3">
           <p className="text-sm text-muted-foreground">
-            {quantity.toLocaleString("pt-BR")} coins - {paymentMethod === "pix" ? "PIX" : "Cartao de Credito"}
+            {quantity.toLocaleString("pt-BR")} coins - PIX
           </p>
           <p className="text-xl font-bold text-primary">R$ {totalPrice.toFixed(2)}</p>
         </CardContent>
@@ -1106,63 +1041,6 @@ function CheckoutForm({
         </div>
       </div>
 
-      {paymentMethod === "credit_card" && (
-        <div className="space-y-4 rounded-md border border-border p-4">
-          <h4 className="text-sm font-semibold">Dados do Cartao</h4>
-          <div>
-            <Label className="mb-1 block text-sm font-medium">
-              Numero do Cartao <span className="text-primary">*</span>
-            </Label>
-            <Input
-              placeholder="0000 0000 0000 0000"
-              value={cardNumber}
-              onChange={(e) => setCardNumber(e.target.value)}
-              data-testid="input-card-number"
-            />
-          </div>
-          <div>
-            <Label className="mb-1 block text-sm font-medium">
-              Nome no Cartao <span className="text-primary">*</span>
-            </Label>
-            <Input
-              placeholder="NOME COMO NO CARTAO"
-              value={cardHolderName}
-              onChange={(e) => setCardHolderName(e.target.value)}
-              data-testid="input-card-holder"
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label className="mb-1 block text-sm font-medium">Mes</Label>
-              <Input
-                placeholder="MM"
-                value={cardExpMonth}
-                onChange={(e) => setCardExpMonth(e.target.value)}
-                data-testid="input-card-exp-month"
-              />
-            </div>
-            <div>
-              <Label className="mb-1 block text-sm font-medium">Ano</Label>
-              <Input
-                placeholder="AAAA"
-                value={cardExpYear}
-                onChange={(e) => setCardExpYear(e.target.value)}
-                data-testid="input-card-exp-year"
-              />
-            </div>
-            <div>
-              <Label className="mb-1 block text-sm font-medium">CVV</Label>
-              <Input
-                placeholder="000"
-                value={cardCvv}
-                onChange={(e) => setCardCvv(e.target.value)}
-                data-testid="input-card-cvv"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
       <Button
         size="lg"
         className="w-full"
@@ -1175,7 +1053,7 @@ function CheckoutForm({
         ) : (
           <CheckCircle className="mr-2 h-4 w-4" />
         )}
-        {paymentMethod === "pix" ? "Gerar QR Code PIX" : "Pagar com Cartao"}
+        Gerar QR Code PIX
       </Button>
     </div>
   );
@@ -1214,9 +1092,9 @@ function PixQrCodeDisplay({
         </div>
 
         <div className="mb-4 flex justify-center">
-          {pixResult.pixQrCodeUrl ? (
+          {pixResult.pixQrCodeBase64 ? (
             <img
-              src={pixResult.pixQrCodeUrl}
+              src={`data:image/png;base64,${pixResult.pixQrCodeBase64}`}
               alt="QR Code PIX"
               className="h-56 w-56 rounded-md border border-border bg-white p-2"
               data-testid="img-pix-qrcode"

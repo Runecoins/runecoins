@@ -1,0 +1,57 @@
+Prompt para o desenvolvimento do app de compra e venda de Coins no Replit:
+
+Utilização do projeto existente:
+
+O projeto do site no Replit já está quase pronto. O objetivo agora é transformar essa base em um aplicativo de compra e venda de Coins.
+
+Use as páginas do site como referência para a construção da interface e funcionalidades, mantendo a lógica de layout, fluxo de navegação e interações.
+
+Estrutura do Aplicativo:
+
+Página de Login: O aplicativo precisa de uma página de login onde o usuário pode se autenticar usando sua conta do Paulistinha OT.
+
+Página de Compra/Venda de Coins: A funcionalidade central do aplicativo, onde os jogadores poderão comprar ou vender Coins. Incluir campos para selecionar a quantidade de Coins, visualizar preços e histórico de transações.
+
+Página de Histórico de Transações: Exibir o histórico de todas as compras e vendas feitas pelo usuário. A cada transação realizada, ela deve ser registrada nesta página com data, quantidade de Coins e o valor pago.
+
+Notificações: Sistema de notificações para avisar o usuário sobre a conclusão de uma transação, promoções ou ofertas especiais de Coins.
+
+Funcionalidades do Aplicativo:
+
+Integração com API do Paulistinha OT: Conectar o aplicativo ao servidor Paulistinha OT para validar as transações de compra e venda de Coins.
+
+Validação de Usuário: Garantir que os usuários só possam comprar ou vender Coins se estiverem logados e com saldo suficiente.
+
+Sistema de Pagamento: Para a compra de Coins, implementar um sistema de pagamento (pode ser fictício ou integrar com um serviço real de pagamento online, dependendo do seu foco).
+
+Monitoramento de Saldo: Exibir o saldo de Coins atual do usuário e atualizá-lo após cada transação.
+
+Segurança: Implementar autenticação de dois fatores ou outra camada de segurança para proteger as transações.
+
+Tecnologias Recomendadas:
+
+Frontend: HTML, CSS, JavaScript (React ou Vue.js podem ser uma boa opção para interação dinâmica).
+
+Backend: Node.js para a construção da API e integração com a base de dados. Utilizar Express.js ou outra framework similar para gerenciar as rotas.
+
+Banco de Dados: MySQL ou MongoDB para armazenar informações de usuários, transações e saldo de Coins.
+
+Autenticação: JWT (JSON Web Tokens) para autenticação de usuários no frontend e backend.
+
+Objetivos a serem cumpridos:
+
+Design Responsivo: O aplicativo deve funcionar bem em dispositivos móveis e desktops.
+
+Experiência do Usuário: A navegação e a compra/venda de Coins devem ser intuitivas, rápidas e fáceis de usar.
+
+Performance: O aplicativo deve ser rápido, com transações ocorrendo sem grandes atrasos.
+
+Instruções:
+
+Pegue o código do projeto que você já tem no Replit e crie novas pastas e arquivos conforme necessário para adicionar as novas páginas e funcionalidades.
+
+Conecte o backend ao servidor Paulistinha OT para realizar as transações de compra e venda de Coins.
+
+Se necessário, adicione novos endpoints no backend para manipular dados de transações.
+
+Teste as funcionalidades de compra, venda e histórico, garantindo que o sistema esteja funcionando conforme esperado.

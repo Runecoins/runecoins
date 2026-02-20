@@ -8,7 +8,7 @@ A full-stack Tibia Coins buy/sell marketplace with a dark gaming theme featuring
 - Backend: Express.js + Drizzle ORM + Multer (file uploads)
 - Database: PostgreSQL (Neon-backed)
 - State: TanStack React Query
-- Payment: Pagar.me API v5 (via axios)
+- Payment: MercadoPago API (via official SDK)
 - Auth: bcryptjs + express-session + connect-pg-simple
 
 ## Project Structure
@@ -44,7 +44,7 @@ A full-stack Tibia Coins buy/sell marketplace with a dark gaming theme featuring
 ## Pricing
 - Buy price: R$ 0.0849 per coin (fixed)
 - Sell price: R$ 0.0649 per coin (fixed)
-- Credit card surcharge: +5% on buy orders
+- Payment method: PIX only
 
 ## API Endpoints
 ### Auth
@@ -63,10 +63,10 @@ A full-stack Tibia Coins buy/sell marketplace with a dark gaming theme featuring
 - GET /api/servers - List game servers
 - POST /api/orders - Create a new order
 - GET /api/orders/:id - Get order by ID
-- POST /api/payments - Process buy payment (PIX or credit card via Pagar.me)
+- POST /api/payments - Process buy payment (PIX via MercadoPago)
 - GET /api/payments/:orderId/status - Check payment status
 - POST /api/sell-orders - Create sell order (multipart/form-data with screenshots)
-- POST /api/webhooks/pagarme - Pagar.me webhook handler
+- POST /api/webhooks/mercadopago - MercadoPago webhook handler
 
 ## Database Tables
 - users (id, username, password, email, full_name, phone, role, created_at)

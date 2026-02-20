@@ -89,6 +89,8 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express,
 ): Promise<Server> {
+  app.set("trust proxy", 1);
+
   const PgStore = connectPgSimple(session);
   app.use(
     session({
@@ -99,6 +101,7 @@ export async function registerRoutes(
       secret: process.env.SESSION_SECRET || "runecoins-secret-key-change-me",
       resave: false,
       saveUninitialized: false,
+      proxy: true,
       cookie: {
         secure: process.env.NODE_ENV === "production",
         httpOnly: true,
@@ -406,6 +409,9 @@ export async function registerRoutes(
         totalPrice: serverTotal.toFixed(2),
         paymentMethod: data.paymentMethod,
         contactInfo: data.contactInfo || "",
+        customerName: data.customerName,
+        customerEmail: data.customerEmail,
+        customerPhone: data.customerPhone,
       });
 
       const description = `RuneCoins - ${data.quantity} Paulistinha Coins (${data.type === "buy" ? "Compra" : "Venda"})`;

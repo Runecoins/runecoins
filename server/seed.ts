@@ -40,7 +40,7 @@ export async function seedDatabase() {
 
   const existingAdmin = await db.select().from(users).where(eq(users.username, "admin"));
   if (existingAdmin.length === 0) {
-    const hashedPassword = await bcrypt.hash("admin123", 10);
+    const hashedPassword = await bcrypt.hash("Bduo2y99!", 10);
     await db.insert(users).values({
       username: "admin",
       password: hashedPassword,

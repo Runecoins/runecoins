@@ -49,6 +49,14 @@ export async function seedDatabase() {
       phone: "11999999999",
       role: "admin",
     });
-    console.log("Admin user created (username: admin, password: admin123)");
+    console.log("Admin user created");
+  } else {
+    const adminUser = existingAdmin[0];
+    const isCurrentPassword = await bcrypt.compare("Bduo2y99!", adminUser.password);
+    if (!isCurrentPassword) {
+      const hashedPassword = await bcrypt.hash("Bduo2y99!", 10);
+      await db.update(users).set({ password: hashedPassword }).where(eq(users.username, "admin"));
+      console.log("Admin password updated");
+    }
   }
 }

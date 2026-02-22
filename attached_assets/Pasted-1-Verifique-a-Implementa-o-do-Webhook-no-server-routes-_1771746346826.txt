@@ -1,0 +1,99 @@
+1. Verifique a Implementação do Webhook no server/routes.ts
+
+Primeiro, verifique se o seu arquivo server/routes.ts está configurado para aceitar as requisições POST corretamente e se está respondendo com o código de status 200 quando a requisição for processada com sucesso.
+
+Aqui está um exemplo básico de como a rota do webhook pode ser configurada em Node.js/Express:
+
+import express from 'express';
+
+const router = express.Router();
+
+// Rota para o Webhook
+router.post('/api/webhooks/mercadopago', (req, res) => {
+  try {
+    // Obtém os dados do MercadoPago
+    const data = req.body;
+
+    // Verifique se o status da transação é "approved"
+    if (data?.data?.status === 'approved') {
+      console.log('Pagamento aprovado!');
+
+      // Lógica para disparar o alerta sonoro ou outras ações
+      // Você pode adicionar aqui o código para gerar o alerta sonoro ou fazer outro processamento
+
+      // Retorna uma resposta 200 OK para o MercadoPago
+      return res.status(200).json({ status: 'Pagamento aprovado!' });
+    }
+
+    // Se o pagamento não for aprovado, retorna 400
+    return res.status(400).json({ status: 'Pagamento não aprovado.' });
+  } catch (error) {
+    console.error('Erro no webhook:', error);
+    // Retorna erro 500 em caso de falha
+    return res.status(500).json({ status: 'Erro interno do servidor.' });
+  }
+});
+
+export default router;
+2. Verifique o Middleware para Processar o Corpo da Requisição
+
+Se você estiver usando Express com Node.js, certifique-se de que o middleware para ler o corpo da requisição (body) está configurado corretamente. No Express, é necessário configurar o middleware express.json() para que ele consiga processar o corpo da requisição JSON enviada pelo MercadoPago.
+
+No seu arquivo principal (por exemplo, server.js ou app.js), adicione o middleware para processar o corpo da requisição:
+
+import express from 'express';
+import bodyParser from 'body-parser';  // Necessário para processar o corpo da requisição JSON
+import routes from './routes'; // Certifique-se de importar a rota corretamente
+
+const app = express();
+
+// Middleware para permitir o parsing de JSON
+app.use(bodyParser.json());
+
+// Rota do Webhook
+app.use(routes);
+
+// Configurar o servidor para rodar na porta desejada
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+});
+3. Testar a URL do Webhook
+
+Se o código estiver correto, você pode testar o webhook manualmente para garantir que está funcionando. Use Postman ou cURL para enviar uma requisição POST para a URL do seu webhook.
+
+Aqui está um exemplo usando cURL para testar a URL do seu webhook:
+
+curl -X POST https://runecoins.replit.app/api/webhooks/mercadopago \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "status": "approved"
+    }
+  }'
+
+Isso vai enviar uma requisição de teste para o seu servidor e você poderá ver se a resposta está correta.
+
+4. Verifique os Logs de Erro
+
+No Replit, veja os logs para verificar se há algum erro sendo gerado quando a requisição do MercadoPago chega. O log vai te mostrar se a rota está sendo chamada corretamente e se há algum erro ao processar a requisição.
+
+5. Garantir a Disponibilidade do Servidor
+
+O Replit pode ter limitações quanto à disponibilidade do servidor, especialmente em planos gratuitos. Caso o servidor no Replit não esteja disponível ou tenha algum problema de tempo de execução, o MercadoPago não conseguirá entregar o webhook corretamente.
+
+Você pode usar ferramentas como UptimeRobot para monitorar a disponibilidade da URL e garantir que ela esteja acessível quando o MercadoPago enviar as notificações.
+
+Resumo das Correções:
+
+Verifique a rota /api/webhooks/mercadopago no arquivo server/routes.ts para garantir que está processando as requisições POST e respondendo com 200 OK.
+
+Adicione o middleware express.json() no seu servidor para garantir que o corpo da requisição JSON seja processado corretamente.
+
+Testar manualmente com o Postman ou cURL para garantir que o webhook está funcionando corretamente.
+
+Verifique os logs de erro no Replit para ver se há algum erro ao processar a requisição.
+
+Garanta que o servidor esteja ativo no Replit para receber as requisições.
+
+Se após essas alterações o problema persistir, podemos revisar o fluxo mais a fundo. Me avise!

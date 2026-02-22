@@ -48,24 +48,8 @@ export default function AdminPage() {
   const playNotificationSound = useCallback(() => {
     if (!soundEnabled) return;
     try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new AudioContext();
-      }
-      const ctx = audioContextRef.current;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = "sine";
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-
-      osc.frequency.setValueAtTime(800, ctx.currentTime);
-      osc.frequency.setValueAtTime(1000, ctx.currentTime + 0.1);
-      osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.2);
-
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.5);
+      const audio = new Audio("/sounds/notification.mp3");
+      audio.play().catch(e => console.error("Playback failed:", e));
     } catch (e) {
       console.error("Audio error:", e);
     }

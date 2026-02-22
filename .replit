@@ -38,3 +38,8 @@ author = "agent"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[userenv]
+
+[userenv.shared]
+MERCADOPAGO_WEBHOOK_SECRET = "aa1beb76f328894253f1cc0fc83234bc990422cf2cc2a98d5e57f1974a738d54"

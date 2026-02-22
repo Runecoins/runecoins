@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -44,46 +44,46 @@ export default function AdminPage() {
   const [notifications, setNotifications] = useState<Array<{ id: string; orderId: string; amount: string; quantity: number; customerName: string; timestamp: Date }>>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [sseConnected, setSseConnected] = useState(false);
-  const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    const audio = new Audio("/sounds/notification.wav");
-    audio.preload = "auto";
-    audio.volume = 1.0;
-    notificationAudioRef.current = audio;
-  }, []);
 
   const playNotificationSound = useCallback(() => {
     if (!soundEnabled) return;
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playTone = (freq: number, startTime: number, duration: number, type: OscillatorType = "sine", vol: number = 0.25) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
+        gain.gain.setValueAtTime(vol, ctx.currentTime + startTime);
+        gain.gain.setValueAtTime(vol, ctx.currentTime + startTime + duration * 0.7);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + duration);
+        osc.start(ctx.currentTime + startTime);
+        osc.stop(ctx.currentTime + startTime + duration);
+      };
 
-    const audio = notificationAudioRef.current;
-    if (audio) {
-      audio.currentTime = 0;
-      audio.play().catch(() => {
-        try {
-          const ctx = new AudioContext();
-          const notes = [
-            { freq: 880, start: 0, dur: 0.3 },
-            { freq: 1109, start: 0.12, dur: 0.3 },
-            { freq: 1319, start: 0.24, dur: 0.4 },
-            { freq: 1760, start: 0.36, dur: 0.5 },
-          ];
-          notes.forEach(n => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = "sine";
-            osc.frequency.value = n.freq;
-            gain.gain.setValueAtTime(0.3, ctx.currentTime + n.start);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + n.start + n.dur);
-            osc.start(ctx.currentTime + n.start);
-            osc.stop(ctx.currentTime + n.start + n.dur);
-          });
-        } catch (e2) {
-          console.error("Audio fallback error:", e2);
-        }
-      });
+      playTone(523.25, 0, 0.15, "sine", 0.3);
+      playTone(659.25, 0.15, 0.15, "sine", 0.3);
+      playTone(783.99, 0.30, 0.15, "sine", 0.3);
+      playTone(1046.50, 0.45, 0.4, "sine", 0.35);
+
+      playTone(523.25, 0, 0.15, "triangle", 0.15);
+      playTone(659.25, 0.15, 0.15, "triangle", 0.15);
+      playTone(783.99, 0.30, 0.15, "triangle", 0.15);
+      playTone(1046.50, 0.45, 0.4, "triangle", 0.2);
+
+      playTone(1046.50, 1.0, 0.15, "sine", 0.3);
+      playTone(1318.51, 1.15, 0.15, "sine", 0.3);
+      playTone(1567.98, 1.30, 0.15, "sine", 0.3);
+      playTone(2093.00, 1.45, 0.5, "sine", 0.35);
+
+      playTone(1046.50, 1.0, 0.15, "triangle", 0.15);
+      playTone(1318.51, 1.15, 0.15, "triangle", 0.15);
+      playTone(1567.98, 1.30, 0.15, "triangle", 0.15);
+      playTone(2093.00, 1.45, 0.5, "triangle", 0.2);
+    } catch (e) {
+      console.error("Audio error:", e);
     }
   }, [soundEnabled]);
 

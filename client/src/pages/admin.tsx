@@ -41,7 +41,7 @@ export default function AdminPage() {
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [imageModal, setImageModal] = useState<string | null>(null);
   const [clientSearch, setClientSearch] = useState("");
-  const [notifications, setNotifications] = useState<Array<{ id: string; orderId: string; amount: string; quantity: number; customerName: string; timestamp: Date }>>([]);
+  const [notifications, setNotifications] = useState<Array<{ id: string; orderId: string; amount: string; quantity: number; customerName: string; timestamp: Date; eventType: string }>>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [sseConnected, setSseConnected] = useState(false);
 
@@ -104,7 +104,7 @@ export default function AdminPage() {
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.type === "payment_approved") {
+          if (data.type === "payment_approved" || data.type === "new_buy_order" || data.type === "new_sell_order") {
             playNotificationSound();
             setNotifications((prev) => [
               {
@@ -114,6 +114,7 @@ export default function AdminPage() {
                 quantity: data.quantity,
                 customerName: data.customerName,
                 timestamp: new Date(),
+                eventType: data.type,
               },
               ...prev,
             ].slice(0, 20));
@@ -267,28 +268,36 @@ export default function AdminPage() {
       {notifications.length > 0 && (
         <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6" data-testid="notifications-panel">
           <div className="space-y-2">
-            {notifications.map((n) => (
-              <div
-                key={n.id}
-                className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 animate-in slide-in-from-top"
-                data-testid={`notification-${n.id}`}
-              >
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-5 w-5 text-green-400" />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      Pagamento Confirmado!
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {n.customerName} - {n.quantity} coins - R$ {Number(n.amount).toFixed(2)}
-                    </p>
+            {notifications.map((n) => {
+              const isPayment = n.eventType === "payment_approved";
+              const isBuy = n.eventType === "new_buy_order";
+              const isSell = n.eventType === "new_sell_order";
+              const borderColor = isPayment ? "border-green-500/30 bg-green-500/10" : isBuy ? "border-blue-500/30 bg-blue-500/10" : "border-yellow-500/30 bg-yellow-500/10";
+              const iconColor = isPayment ? "text-green-400" : isBuy ? "text-blue-400" : "text-yellow-400";
+              const label = isPayment ? "Pagamento Aprovado!" : isBuy ? "Novo Pedido de Compra!" : isSell ? "Novo Pedido de Venda!" : "Nova Atividade";
+              return (
+                <div
+                  key={n.id}
+                  className={`flex items-center justify-between rounded-lg border px-4 py-3 animate-in slide-in-from-top ${borderColor}`}
+                  data-testid={`notification-${n.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    {isPayment ? <CheckCircle className={`h-5 w-5 ${iconColor}`} /> : isBuy ? <ShoppingCart className={`h-5 w-5 ${iconColor}`} /> : <TrendingUp className={`h-5 w-5 ${iconColor}`} />}
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {label}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {n.customerName} - {n.quantity} coins - R$ {Number(n.amount).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
+                  <Button variant="ghost" size="icon" onClick={() => dismissNotification(n.id)} data-testid={`button-dismiss-${n.id}`}>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => dismissNotification(n.id)} data-testid={`button-dismiss-${n.id}`}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

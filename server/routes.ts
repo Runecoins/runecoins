@@ -404,6 +404,17 @@ export async function registerRoutes(
             : null,
         });
 
+        const sellNotification = JSON.stringify({
+          type: "new_sell_order",
+          orderId: order.id,
+          amount: totalPrice.toFixed(2),
+          quantity: qty,
+          customerName: validated.customerName || "Cliente",
+        });
+        Array.from(adminSSEClients).forEach((client) => {
+          client.write(`data: ${sellNotification}\n\n`);
+        });
+
         res.status(201).json({
           orderId: order.id,
           quantity: qty,
@@ -481,6 +492,17 @@ export async function registerRoutes(
           pixQrCode: result.pixQrCode,
           pixQrCodeUrl: result.pixQrCodeBase64,
           status: result.status === "approved" ? "paid" : "awaiting_payment",
+        });
+
+        const buyNotification = JSON.stringify({
+          type: "new_buy_order",
+          orderId: order.id,
+          amount: serverTotal.toFixed(2),
+          quantity: data.quantity,
+          customerName: data.customerName || "Cliente",
+        });
+        Array.from(adminSSEClients).forEach((client) => {
+          client.write(`data: ${buyNotification}\n\n`);
         });
 
         res.status(201).json({

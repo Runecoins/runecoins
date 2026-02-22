@@ -2,7 +2,7 @@ import { SiDiscord, SiInstagram, SiWhatsapp } from "react-icons/si";
 import logoPath from "@assets/image_1771376960094.png";
 
 const socialLinks = [
-  { icon: SiInstagram, label: "Instagram", href: "https://www.instagram.com/runecoinsot/" },
+  { icon: SiInstagram, label: "Instagram", href: "https://www.instagram.com/runecoins.oficial/" },
   { icon: SiDiscord, label: "Discord", href: "#" },
   { icon: SiWhatsapp, label: "WhatsApp", href: "#" },
 ];

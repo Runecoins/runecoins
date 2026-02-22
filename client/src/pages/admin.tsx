@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   ShoppingCart, TrendingUp, Clock, CheckCircle, ArrowLeft,
-  Search, Filter, Eye, ChevronDown, ChevronUp, X, Image, Users
+  Search, Filter, Eye, ChevronDown, ChevronUp, X, Image, Users, Bell, BellRing, Volume2
 } from "lucide-react";
 import type { Order, User } from "@shared/schema";
 
@@ -41,6 +41,71 @@ export default function AdminPage() {
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [imageModal, setImageModal] = useState<string | null>(null);
   const [clientSearch, setClientSearch] = useState("");
+  const [notifications, setNotifications] = useState<Array<{ id: string; orderId: string; amount: string; quantity: number; customerName: string; timestamp: Date }>>([]);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  const playNotificationSound = useCallback(() => {
+    if (!soundEnabled) return;
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext();
+      }
+      const ctx = audioContextRef.current;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.setValueAtTime(1000, ctx.currentTime + 0.1);
+      osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.2);
+
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.5);
+    } catch (e) {
+      console.error("Audio error:", e);
+    }
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    if (!user || user.role !== "admin") return;
+
+    const eventSource = new EventSource("/api/admin/notifications/stream");
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "payment_approved") {
+          playNotificationSound();
+          setNotifications((prev) => [
+            {
+              id: crypto.randomUUID(),
+              orderId: data.orderId,
+              amount: data.amount,
+              quantity: data.quantity,
+              customerName: data.customerName,
+              timestamp: new Date(),
+            },
+            ...prev,
+          ].slice(0, 20));
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+        }
+      } catch {}
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [user, playNotificationSound]);
+
+  const dismissNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
 
   const { data: stats } = useQuery<{ total: number; pending: number; paid: number; sell: number; buy: number }>({
     queryKey: ["/api/admin/stats"],
@@ -112,11 +177,59 @@ export default function AdminPage() {
             </Button>
             <h1 className="text-xl font-bold text-foreground" data-testid="text-admin-title">Painel Administrativo</h1>
           </div>
-          <Badge className="border border-primary/30 bg-primary/10 text-primary" data-testid="badge-admin-role">
-            Administrador
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              title={soundEnabled ? "Desativar som" : "Ativar som"}
+              data-testid="button-toggle-sound"
+            >
+              {soundEnabled ? <Volume2 className="h-5 w-5 text-green-400" /> : <Volume2 className="h-5 w-5 text-muted-foreground" />}
+            </Button>
+            <div className="relative">
+              {notifications.length > 0 && (
+                <span className="absolute -right-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white" data-testid="badge-notification-count">
+                  {notifications.length}
+                </span>
+              )}
+              <BellRing className={`h-5 w-5 ${notifications.length > 0 ? "text-yellow-400 animate-pulse" : "text-muted-foreground"}`} data-testid="icon-notification-bell" />
+            </div>
+            <Badge className="border border-primary/30 bg-primary/10 text-primary" data-testid="badge-admin-role">
+              Administrador
+            </Badge>
+          </div>
         </div>
       </header>
+
+      {notifications.length > 0 && (
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6" data-testid="notifications-panel">
+          <div className="space-y-2">
+            {notifications.map((n) => (
+              <div
+                key={n.id}
+                className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 animate-in slide-in-from-top"
+                data-testid={`notification-${n.id}`}
+              >
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-400" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Pagamento Confirmado!
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {n.customerName} - {n.quantity} coins - R$ {Number(n.amount).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => dismissNotification(n.id)} data-testid={`button-dismiss-${n.id}`}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

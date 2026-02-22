@@ -15,6 +15,8 @@ import bcrypt from "bcryptjs";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 
+const adminSSEClients: Set<Response> = new Set();
+
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -205,6 +207,19 @@ export async function registerRoutes(
       email: user.email,
       fullName: user.fullName,
       role: user.role,
+    });
+  });
+
+  app.get("/api/admin/notifications/stream", requireAdmin, (req, res) => {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    });
+    res.write("data: {\"type\":\"connected\"}\n\n");
+    adminSSEClients.add(res);
+    req.on("close", () => {
+      adminSSEClients.delete(res);
     });
   });
 
@@ -532,6 +547,16 @@ export async function registerRoutes(
           if (order && order.status !== "paid") {
             await storage.updateOrderStatus(order.id, "paid");
             console.log(`[MercadoPago] Pagamento aprovado para pedido ${order.id}`);
+            const notification = JSON.stringify({
+              type: "payment_approved",
+              orderId: order.id,
+              amount: order.totalPrice,
+              quantity: order.quantity,
+              customerName: order.customerName || "Cliente",
+            });
+            Array.from(adminSSEClients).forEach((client) => {
+              client.write(`data: ${notification}\n\n`);
+            });
           }
         }
       }

@@ -59,7 +59,7 @@ export function Navbar() {
 
           <div className="hidden items-center gap-2 md:flex">
             <a
-              href="https://www.instagram.com/runecoinsot/"
+              href="https://www.instagram.com/runecoins.oficial/"
               target="_blank"
               rel="noopener noreferrer"
               data-testid="link-instagram"
@@ -133,7 +133,7 @@ export function Navbar() {
                 </Button>
               ))}
               <a
-                href="https://www.instagram.com/runecoinsot/"
+                href="https://www.instagram.com/runecoins.oficial/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-3 py-1"

@@ -63,25 +63,18 @@ export default function AdminPage() {
         osc.stop(ctx.currentTime + startTime + duration);
       };
 
-      playTone(523.25, 0, 0.15, "sine", 0.3);
-      playTone(659.25, 0.15, 0.15, "sine", 0.3);
-      playTone(783.99, 0.30, 0.15, "sine", 0.3);
-      playTone(1046.50, 0.45, 0.4, "sine", 0.35);
+      for (let rep = 0; rep < 3; rep++) {
+        const offset = rep * 1.8;
+        playTone(523.25, offset, 0.25, "sine", 0.3);
+        playTone(659.25, offset + 0.25, 0.25, "sine", 0.3);
+        playTone(783.99, offset + 0.50, 0.25, "sine", 0.3);
+        playTone(1046.50, offset + 0.75, 0.6, "sine", 0.35);
 
-      playTone(523.25, 0, 0.15, "triangle", 0.15);
-      playTone(659.25, 0.15, 0.15, "triangle", 0.15);
-      playTone(783.99, 0.30, 0.15, "triangle", 0.15);
-      playTone(1046.50, 0.45, 0.4, "triangle", 0.2);
-
-      playTone(1046.50, 1.0, 0.15, "sine", 0.3);
-      playTone(1318.51, 1.15, 0.15, "sine", 0.3);
-      playTone(1567.98, 1.30, 0.15, "sine", 0.3);
-      playTone(2093.00, 1.45, 0.5, "sine", 0.35);
-
-      playTone(1046.50, 1.0, 0.15, "triangle", 0.15);
-      playTone(1318.51, 1.15, 0.15, "triangle", 0.15);
-      playTone(1567.98, 1.30, 0.15, "triangle", 0.15);
-      playTone(2093.00, 1.45, 0.5, "triangle", 0.2);
+        playTone(523.25, offset, 0.25, "triangle", 0.15);
+        playTone(659.25, offset + 0.25, 0.25, "triangle", 0.15);
+        playTone(783.99, offset + 0.50, 0.25, "triangle", 0.15);
+        playTone(1046.50, offset + 0.75, 0.6, "triangle", 0.2);
+      }
     } catch (e) {
       console.error("Audio error:", e);
     }

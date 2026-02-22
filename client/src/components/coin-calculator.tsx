@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1075,12 +1075,127 @@ function PixQrCodeDisplay({
   onClose: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [paymentApproved, setPaymentApproved] = useState(false);
+
+  useEffect(() => {
+    if (paymentApproved) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/payments/${pixResult.orderId}/status`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === "paid" || data.mercadoPagoStatus === "approved") {
+            setPaymentApproved(true);
+            clearInterval(interval);
+          }
+        }
+      } catch {}
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [pixResult.orderId, paymentApproved]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(pixResult.pixQrCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  if (paymentApproved) {
+    return (
+      <Card className="border-green-500/30 bg-gradient-to-b from-green-500/5 to-transparent">
+        <CardContent className="p-6">
+          <div className="space-y-6 py-4 text-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            >
+              <div className="mx-auto mb-2 flex h-24 w-24 items-center justify-center rounded-full bg-green-500/20">
+                <CheckCircle className="h-14 w-14 text-green-500" />
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <h3 className="text-2xl font-bold text-green-500" data-testid="text-payment-approved-title">
+                Pagamento Aprovado!
+              </h3>
+              <p className="mt-2 text-muted-foreground">
+                Seu pagamento foi confirmado com sucesso.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Card className="border-primary/20">
+                <CardContent className="p-4">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Pedido:</span>
+                      <span className="font-mono font-medium" data-testid="text-approved-order-id">
+                        #{pixResult.orderId.slice(0, 8)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Valor pago:</span>
+                      <span className="font-bold text-green-500" data-testid="text-approved-amount">
+                        R$ {totalPrice.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Status:</span>
+                      <span className="font-medium text-green-500" data-testid="text-approved-status">
+                        Aprovado
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="space-y-3"
+            >
+              <div className="flex items-center justify-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm" data-testid="text-delivery-notice">
+                <Clock className="h-5 w-5 shrink-0 text-yellow-500" />
+                <div className="text-left">
+                  <p className="font-semibold text-yellow-500">Aguarde a entrega</p>
+                  <p className="text-muted-foreground">
+                    Suas coins serao enviadas em ate <span className="font-bold text-foreground">5 minutos</span> para o seu personagem dentro do jogo.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+                <p>A entrega e realizada manualmente por nossa equipe. Em horarios de pico, pode levar alguns minutos a mais. Caso demore, entre em contato pelo nosso Instagram.</p>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1 }}
+            >
+              <Button variant="outline" className="w-full" onClick={onClose} data-testid="button-approved-new-order">
+                Fazer novo pedido
+              </Button>
+            </motion.div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-primary/20">
@@ -1127,7 +1242,12 @@ function PixQrCodeDisplay({
           </div>
         </div>
 
-        <div className="rounded-md bg-muted/50 p-3 text-center text-sm text-muted-foreground">
+        <div className="flex items-center justify-center gap-2 rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <span>Aguardando pagamento...</span>
+        </div>
+
+        <div className="mt-2 rounded-md bg-muted/50 p-3 text-center text-sm text-muted-foreground">
           <p>Abra o app do seu banco, escolha pagar via PIX e escaneie o QR Code ou copie e cole o codigo acima.</p>
           <p className="mt-1 font-medium text-primary">O QR Code expira em 1 hora.</p>
         </div>

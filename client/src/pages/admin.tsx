@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -44,37 +44,53 @@ export default function AdminPage() {
   const [notifications, setNotifications] = useState<Array<{ id: string; orderId: string; amount: string; quantity: number; customerName: string; timestamp: Date; eventType: string }>>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [sseConnected, setSseConnected] = useState(false);
+  const [isAlarmPlaying, setIsAlarmPlaying] = useState(false);
+  const alarmRef = useRef<{ ctx: AudioContext; intervalId: ReturnType<typeof setInterval> } | null>(null);
+
+  const stopAlarm = useCallback(() => {
+    if (alarmRef.current) {
+      clearInterval(alarmRef.current.intervalId);
+      alarmRef.current.ctx.close();
+      alarmRef.current = null;
+    }
+    setIsAlarmPlaying(false);
+  }, []);
 
   const playNotificationSound = useCallback(() => {
     if (!soundEnabled) return;
+    if (alarmRef.current) return;
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const playTone = (freq: number, startTime: number, duration: number, type: OscillatorType = "sine", vol: number = 0.25) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
-        gain.gain.setValueAtTime(vol, ctx.currentTime + startTime);
-        gain.gain.setValueAtTime(vol, ctx.currentTime + startTime + duration * 0.7);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + duration);
-        osc.start(ctx.currentTime + startTime);
-        osc.stop(ctx.currentTime + startTime + duration);
+
+      const playSequence = () => {
+        const playTone = (freq: number, startTime: number, duration: number, type: OscillatorType = "sine", vol: number = 0.25) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
+          gain.gain.setValueAtTime(vol, ctx.currentTime + startTime);
+          gain.gain.setValueAtTime(vol, ctx.currentTime + startTime + duration * 0.7);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + duration);
+          osc.start(ctx.currentTime + startTime);
+          osc.stop(ctx.currentTime + startTime + duration);
+        };
+
+        playTone(523.25, 0, 0.25, "sine", 0.3);
+        playTone(659.25, 0.25, 0.25, "sine", 0.3);
+        playTone(783.99, 0.50, 0.25, "sine", 0.3);
+        playTone(1046.50, 0.75, 0.6, "sine", 0.35);
+        playTone(523.25, 0, 0.25, "triangle", 0.15);
+        playTone(659.25, 0.25, 0.25, "triangle", 0.15);
+        playTone(783.99, 0.50, 0.25, "triangle", 0.15);
+        playTone(1046.50, 0.75, 0.6, "triangle", 0.2);
       };
 
-      for (let rep = 0; rep < 3; rep++) {
-        const offset = rep * 1.8;
-        playTone(523.25, offset, 0.25, "sine", 0.3);
-        playTone(659.25, offset + 0.25, 0.25, "sine", 0.3);
-        playTone(783.99, offset + 0.50, 0.25, "sine", 0.3);
-        playTone(1046.50, offset + 0.75, 0.6, "sine", 0.35);
-
-        playTone(523.25, offset, 0.25, "triangle", 0.15);
-        playTone(659.25, offset + 0.25, 0.25, "triangle", 0.15);
-        playTone(783.99, offset + 0.50, 0.25, "triangle", 0.15);
-        playTone(1046.50, offset + 0.75, 0.6, "triangle", 0.2);
-      }
+      playSequence();
+      const intervalId = setInterval(playSequence, 2000);
+      alarmRef.current = { ctx, intervalId };
+      setIsAlarmPlaying(true);
     } catch (e) {
       console.error("Audio error:", e);
     }
@@ -131,6 +147,10 @@ export default function AdminPage() {
       clearTimeout(reconnectTimer);
     };
   }, [user, playNotificationSound]);
+
+  useEffect(() => {
+    return () => { stopAlarm(); };
+  }, [stopAlarm]);
 
   const dismissNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
@@ -257,6 +277,19 @@ export default function AdminPage() {
           </div>
         </div>
       </header>
+
+      {isAlarmPlaying && (
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
+          <Button
+            onClick={stopAlarm}
+            className="w-full animate-pulse bg-red-600 py-6 text-lg font-bold text-white hover:bg-red-700"
+            data-testid="button-stop-alarm"
+          >
+            <Volume2 className="mr-2 h-6 w-6" />
+            PARAR ALARME
+          </Button>
+        </div>
+      )}
 
       {notifications.length > 0 && (
         <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6" data-testid="notifications-panel">

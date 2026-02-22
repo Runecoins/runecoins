@@ -216,12 +216,27 @@ export default function AdminPage() {
             <Button
               variant="outline"
               size="sm"
+              onClick={async () => {
+                try {
+                  await apiRequest("POST", "/api/admin/test-notification");
+                } catch {}
+              }}
+              title="Simular notificação de pagamento aprovado"
+              data-testid="button-simulate-payment"
+              className="text-xs border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10"
+            >
+              <Bell className="mr-1 h-3.5 w-3.5" />
+              Simular Pagamento
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={playNotificationSound}
               title="Testar som de notificação"
               data-testid="button-test-sound"
               className="text-xs"
             >
-              <Bell className="mr-1 h-3.5 w-3.5" />
+              <Volume2 className="mr-1 h-3.5 w-3.5" />
               Testar Som
             </Button>
             <Button

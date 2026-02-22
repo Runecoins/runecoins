@@ -225,6 +225,20 @@ export async function registerRoutes(
     });
   });
 
+  app.post("/api/admin/test-notification", requireAdmin, async (_req, res) => {
+    const notification = JSON.stringify({
+      type: "payment_approved",
+      orderId: "TEST-" + Date.now(),
+      amount: "21.23",
+      quantity: 250,
+      customerName: "Cliente Teste",
+    });
+    Array.from(adminSSEClients).forEach((client) => {
+      client.write(`data: ${notification}\n\n`);
+    });
+    res.json({ success: true, message: "Notificação de teste enviada" });
+  });
+
   app.get("/api/admin/users", requireAdmin, async (_req, res) => {
     try {
       const allUsers = await storage.getUsers();

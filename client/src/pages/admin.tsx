@@ -43,47 +43,98 @@ export default function AdminPage() {
   const [clientSearch, setClientSearch] = useState("");
   const [notifications, setNotifications] = useState<Array<{ id: string; orderId: string; amount: string; quantity: number; customerName: string; timestamp: Date }>>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const [sseConnected, setSseConnected] = useState(false);
+  const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const audio = new Audio("/sounds/notification.wav");
+    audio.preload = "auto";
+    audio.volume = 1.0;
+    notificationAudioRef.current = audio;
+  }, []);
 
   const playNotificationSound = useCallback(() => {
     if (!soundEnabled) return;
-    try {
-      const audio = new Audio("/sounds/notification.mp3");
-      audio.play().catch(e => console.error("Playback failed:", e));
-    } catch (e) {
-      console.error("Audio error:", e);
+
+    const audio = notificationAudioRef.current;
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play().catch(() => {
+        try {
+          const ctx = new AudioContext();
+          const notes = [
+            { freq: 880, start: 0, dur: 0.3 },
+            { freq: 1109, start: 0.12, dur: 0.3 },
+            { freq: 1319, start: 0.24, dur: 0.4 },
+            { freq: 1760, start: 0.36, dur: 0.5 },
+          ];
+          notes.forEach(n => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = "sine";
+            osc.frequency.value = n.freq;
+            gain.gain.setValueAtTime(0.3, ctx.currentTime + n.start);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + n.start + n.dur);
+            osc.start(ctx.currentTime + n.start);
+            osc.stop(ctx.currentTime + n.start + n.dur);
+          });
+        } catch (e2) {
+          console.error("Audio fallback error:", e2);
+        }
+      });
     }
   }, [soundEnabled]);
 
   useEffect(() => {
     if (!user || user.role !== "admin") return;
 
-    const eventSource = new EventSource("/api/admin/notifications/stream");
+    let eventSource: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout>;
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "payment_approved") {
-          playNotificationSound();
-          setNotifications((prev) => [
-            {
-              id: crypto.randomUUID(),
-              orderId: data.orderId,
-              amount: data.amount,
-              quantity: data.quantity,
-              customerName: data.customerName,
-              timestamp: new Date(),
-            },
-            ...prev,
-          ].slice(0, 20));
-          queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
-        }
-      } catch {}
-    };
+    function connect() {
+      eventSource = new EventSource("/api/admin/notifications/stream");
+
+      eventSource.onopen = () => {
+        setSseConnected(true);
+        console.log("[SSE] Connected");
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "payment_approved") {
+            playNotificationSound();
+            setNotifications((prev) => [
+              {
+                id: crypto.randomUUID(),
+                orderId: data.orderId,
+                amount: data.amount,
+                quantity: data.quantity,
+                customerName: data.customerName,
+                timestamp: new Date(),
+              },
+              ...prev,
+            ].slice(0, 20));
+            queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+          }
+        } catch {}
+      };
+
+      eventSource.onerror = () => {
+        setSseConnected(false);
+        eventSource?.close();
+        reconnectTimer = setTimeout(connect, 5000);
+      };
+    }
+
+    connect();
 
     return () => {
-      eventSource.close();
+      eventSource?.close();
+      clearTimeout(reconnectTimer);
     };
   }, [user, playNotificationSound]);
 
@@ -163,6 +214,17 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center gap-2">
             <Button
+              variant="outline"
+              size="sm"
+              onClick={playNotificationSound}
+              title="Testar som de notificação"
+              data-testid="button-test-sound"
+              className="text-xs"
+            >
+              <Bell className="mr-1 h-3.5 w-3.5" />
+              Testar Som
+            </Button>
+            <Button
               variant="ghost"
               size="icon"
               onClick={() => setSoundEnabled(!soundEnabled)}
@@ -179,6 +241,7 @@ export default function AdminPage() {
               )}
               <BellRing className={`h-5 w-5 ${notifications.length > 0 ? "text-yellow-400 animate-pulse" : "text-muted-foreground"}`} data-testid="icon-notification-bell" />
             </div>
+            <div className={`h-2 w-2 rounded-full ${sseConnected ? "bg-green-500" : "bg-red-500"}`} title={sseConnected ? "Conectado" : "Desconectado"} data-testid="indicator-sse-status" />
             <Badge className="border border-primary/30 bg-primary/10 text-primary" data-testid="badge-admin-role">
               Administrador
             </Badge>

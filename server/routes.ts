@@ -533,26 +533,35 @@ export async function registerRoutes(
       const xRequestId = req.headers["x-request-id"];
       const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
 
-      if (secret && xSignature) {
+      if (secret) {
+        if (!xSignature || !xRequestId) {
+          console.error("[MercadoPago] Missing webhook signature headers");
+          return res.sendStatus(401);
+        }
+
         const parts = String(xSignature).split(",");
         let ts = "";
         let hash = "";
         parts.forEach(part => {
-          const [key, value] = part.split("=");
+          const [key, value] = part.trim().split("=");
           if (key === "ts") ts = value;
           if (key === "v1") hash = value;
         });
 
-        const manifest = `id:${req.query.id || req.body?.data?.id};request-id:${xRequestId};ts:${ts};`;
+        if (!ts || !hash) {
+          console.error("[MercadoPago] Malformed webhook signature");
+          return res.sendStatus(401);
+        }
+
+        const dataId = req.query["data.id"] || req.query.id || req.body?.data?.id || "";
+        const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
         const hmac = crypto.createHmac("sha256", secret);
         hmac.update(manifest);
         const digest = hmac.digest("hex");
 
         if (digest !== hash) {
           console.error("[MercadoPago] Invalid webhook signature");
-          // In some cases MP might send old signatures or different formats, 
-          // but for security we should ideally verify. 
-          // However, if it fails, we should log it.
+          return res.sendStatus(401);
         }
       }
 

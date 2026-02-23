@@ -43,7 +43,7 @@ const upload = multer({
   },
 });
 
-const BUY_PRICE_PER_UNIT = 0.799;
+const BUY_PRICE_PER_UNIT = 0.0799;
 const SELL_PRICE_PER_UNIT = 0.0649;
 
 const paymentSchema = z.object({

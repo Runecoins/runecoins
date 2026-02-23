@@ -15,7 +15,7 @@ import type { CoinPackage, Server } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 
 const quantityPresets = [25, 50, 100, 250, 500, 1000, 5000, 10000];
-const BUY_PRICE_PER_UNIT = 0.799;
+const BUY_PRICE_PER_UNIT = 0.0799;
 const SELL_PRICE_PER_UNIT = 0.0649;
 
 interface PixResult {

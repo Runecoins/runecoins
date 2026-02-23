@@ -9,7 +9,7 @@ import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   ShoppingCart, TrendingUp, Clock, CheckCircle, ArrowLeft,
-  Search, Filter, Eye, ChevronDown, ChevronUp, X, Image, Users, Bell, BellRing, Volume2
+  Search, Filter, Eye, ChevronDown, ChevronUp, X, Image, Users, Bell, BellRing, Volume2, Trash2, Calendar
 } from "lucide-react";
 import type { Order, User } from "@shared/schema";
 
@@ -42,6 +42,7 @@ export default function AdminPage() {
   const [imageModal, setImageModal] = useState<string | null>(null);
   const [clientSearch, setClientSearch] = useState("");
   const [notifications, setNotifications] = useState<Array<{ id: string; orderId: string; amount: string; quantity: number; customerName: string; timestamp: Date; eventType: string }>>([]);
+  const [filterMonth, setFilterMonth] = useState<string>("all");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [sseConnected, setSseConnected] = useState(false);
   const [isAlarmPlaying, setIsAlarmPlaying] = useState(false);
@@ -183,6 +184,16 @@ export default function AdminPage() {
     },
   });
 
+  const deleteOrderMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/admin/orders/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+    },
+  });
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -213,8 +224,19 @@ export default function AdminPage() {
       order.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === "all" || order.type === filterType;
     const matchesStatus = filterStatus === "all" || order.status === filterStatus;
-    return matchesSearch && matchesType && matchesStatus;
+    let matchesMonth = true;
+    if (filterMonth !== "all") {
+      const d = new Date(order.createdAt);
+      const orderMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      matchesMonth = orderMonth === filterMonth;
+    }
+    return matchesSearch && matchesType && matchesStatus && matchesMonth;
   });
+
+  const availableMonths = Array.from(new Set(orders.map((o) => {
+    const d = new Date(o.createdAt);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }))).sort().reverse();
 
   return (
     <div className="min-h-screen bg-background">
@@ -494,6 +516,23 @@ export default function AdminPage() {
                 <option value="completed">Concluido</option>
                 <option value="cancelled">Cancelado</option>
               </select>
+              <select
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                data-testid="select-filter-month"
+              >
+                <option value="all">Todos os Meses</option>
+                {availableMonths.map((m) => {
+                  const [year, month] = m.split("-");
+                  const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+                  return (
+                    <option key={m} value={m}>
+                      {monthNames[parseInt(month) - 1]} {year}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
           </div>
 
@@ -512,6 +551,8 @@ export default function AdminPage() {
                   onUpdateStatus={(status) => updateStatusMutation.mutate({ id: order.id, status })}
                   updating={updateStatusMutation.isPending}
                   onViewImage={(url) => setImageModal(url)}
+                  onDelete={() => { if (confirm("Tem certeza que deseja excluir este pedido?")) deleteOrderMutation.mutate(order.id); }}
+                  deleting={deleteOrderMutation.isPending}
                 />
               ))}
             </div>
@@ -547,6 +588,8 @@ function OrderRow({
   onUpdateStatus,
   updating,
   onViewImage,
+  onDelete,
+  deleting,
 }: {
   order: Order;
   expanded: boolean;
@@ -554,7 +597,10 @@ function OrderRow({
   onUpdateStatus: (status: string) => void;
   updating: boolean;
   onViewImage: (url: string) => void;
+  onDelete: () => void;
+  deleting: boolean;
 }) {
+  const canDelete = order.status !== "paid" && order.status !== "completed";
   return (
     <div className="rounded-md border border-border" data-testid={`row-order-${order.id}`}>
       <div
@@ -657,7 +703,22 @@ function OrderRow({
           )}
 
           <div className="mt-4 border-t border-border pt-4">
-            <p className="mb-2 text-xs font-medium uppercase text-muted-foreground">Alterar Status</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium uppercase text-muted-foreground">Alterar Status</p>
+              {canDelete && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-red-500/50 text-red-500 hover:bg-red-500/10"
+                  disabled={deleting}
+                  onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                  data-testid={`button-delete-order-${order.id}`}
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  {deleting ? "Excluindo..." : "Excluir Pedido"}
+                </Button>
+              )}
+            </div>
             <div className="flex flex-wrap gap-2">
               {["pending", "awaiting_payment", "paid", "processing", "completed", "cancelled"].map((status) => (
                 <Button

@@ -43,7 +43,7 @@ const upload = multer({
   },
 });
 
-const BUY_PRICE_PER_UNIT = 0.0849;
+const BUY_PRICE_PER_UNIT = 0.799;
 const SELL_PRICE_PER_UNIT = 0.0649;
 
 const paymentSchema = z.object({
@@ -296,6 +296,25 @@ export async function registerRoutes(
       res.json(order);
     } catch (error) {
       res.status(500).json({ error: "Erro ao atualizar status" });
+    }
+  });
+
+  app.delete("/api/admin/orders/:id", requireAdmin, async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Pedido nao encontrado" });
+      }
+      if (order.status === "paid" || order.status === "completed") {
+        return res.status(400).json({ error: "Nao e possivel excluir pedidos pagos ou concluidos" });
+      }
+      const deleted = await storage.deleteOrder(req.params.id);
+      if (!deleted) {
+        return res.status(500).json({ error: "Erro ao excluir pedido" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Erro ao excluir pedido" });
     }
   });
 

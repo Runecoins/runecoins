@@ -35,6 +35,7 @@ export interface IStorage {
   }): Promise<Order | undefined>;
 
   getOrderStats(): Promise<{ total: number; pending: number; paid: number; sell: number; buy: number }>;
+  deleteOrder(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -139,6 +140,11 @@ export class DatabaseStorage implements IStorage {
       sell: allOrders.filter(o => o.type === "sell").length,
       buy: allOrders.filter(o => o.type === "buy").length,
     };
+  }
+
+  async deleteOrder(id: string): Promise<boolean> {
+    const result = await db.delete(orders).where(eq(orders.id, id)).returning();
+    return result.length > 0;
   }
 }
 

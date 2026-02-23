@@ -289,7 +289,8 @@ export async function registerRoutes(
   app.patch("/api/admin/orders/:id/status", requireAdmin, async (req, res) => {
     try {
       const { status } = statusUpdateSchema.parse(req.body);
-      const order = await storage.updateOrderStatus(req.params.id, status);
+      const orderId = req.params.id as string;
+      const order = await storage.updateOrderStatus(orderId, status);
       if (!order) {
         return res.status(404).json({ error: "Pedido nao encontrado" });
       }
@@ -301,14 +302,15 @@ export async function registerRoutes(
 
   app.delete("/api/admin/orders/:id", requireAdmin, async (req, res) => {
     try {
-      const order = await storage.getOrder(req.params.id);
+      const orderId = req.params.id as string;
+      const order = await storage.getOrder(orderId);
       if (!order) {
         return res.status(404).json({ error: "Pedido nao encontrado" });
       }
       if (order.status === "paid" || order.status === "completed") {
         return res.status(400).json({ error: "Nao e possivel excluir pedidos pagos ou concluidos" });
       }
-      const deleted = await storage.deleteOrder(req.params.id);
+      const deleted = await storage.deleteOrder(orderId);
       if (!deleted) {
         return res.status(500).json({ error: "Erro ao excluir pedido" });
       }

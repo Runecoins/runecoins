@@ -96,8 +96,13 @@ if (process.env.NODE_ENV !== "production") {
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "3000", 10);
 
-httpServer.listen(port, "0.0.0.0", () => {
-  log(`serving on port ${port}`);
-});
-  );
+httpServer.listen(
+  {
+    port,
+    host: "0.0.0.0",
+  },
+  () => {
+    log(`serving on port ${port}`);
+  },
+);
 })();

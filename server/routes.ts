@@ -1,5 +1,4 @@
 import pg from "pg";
-import PgStoreFactory from "connect-pg-simple";
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -95,11 +94,38 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express,
 ): Promise<Server> {
+  app.set("trust proxy", 1);
 
-  );
+  const PgStore = connectPgSimple(session);
+
+  const connectionString = process.env.DATABASE_URL;
+
+  const sessionPool = new pg.Pool({
+    connectionString,
+    ssl: connectionString?.includes("neon.tech")
+      ? { rejectUnauthorized: false }
+      : undefined,
+  });
+
+  app.use(
+    session({
+      store: new PgStore({
+        pool: sessionPool,
+        createTableIfMissing: true,
+      }),
+      secret: process.env.SESSION_SECRET || "runecoins-secret-key-change-me",
+      resave: false,
+      saveUninitialized: false,
+      proxy: true,
+      cookie: {
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      },
     }),
   );
-
+  
   app.use(
     "/uploads",
     (req, res, next) => {

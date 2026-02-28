@@ -5,14 +5,15 @@ import * as schema from "@shared/schema";
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error("DATABASE_URL is not set");
+  console.error("DATABASE_URL não definida");
+  process.exit(1);
 }
 
 const pool = new pg.Pool({
   connectionString,
-  ssl: connectionString.includes("neon.tech")
-    ? { rejectUnauthorized: false }
-    : undefined,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
 export const db = drizzle(pool, { schema });
